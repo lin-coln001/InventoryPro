@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.cloudinary.android.MediaManager
 
 import com.management.inventorypro.navigation.AppNavHost
 import com.management.inventorypro.ui.theme.InventoryProTheme
@@ -16,14 +17,23 @@ import com.management.inventorypro.ui.theme.InventoryProTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge( )
-        setContent {
-            InventoryProTheme( ) {
-                AppNavHost( )
-                }
-            }
+
+        // Initialize Cloudinary (Only do this once!)
+        val config = mapOf(
+            "cloud_name" to "djtr5luf6",
+            "secure" to true
+        )
+        try {
+            MediaManager.init(this, config)
+        } catch (e: Exception) {
+            // Already initialized
         }
-    }
+
+        setContent {
+            // Your NavHost or Screen
+            AppNavHost( )
+        }
+    }}
 
 
 @Composable

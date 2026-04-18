@@ -5,9 +5,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.management.inventorypro.ui.theme.screens.add.AddProductScreen
 import com.management.inventorypro.ui.theme.screens.dashboard.DashboardScreen
 import com.management.inventorypro.ui.theme.screens.login.LoginScreen
-import com.management.inventorypro.ui.theme.screens.profile.ProfileScreen
+
 import com.management.inventorypro.ui.theme.screens.register.RegisterScreen
 
 
@@ -30,8 +31,7 @@ fun AppNavHost(
             DashboardScreen(navController)
 
     }
-        composable("profile"){
-            ProfileScreen(navController)
-
+        composable("add_product"){
+            AddProductScreen(navController)
         }
 }}

@@ -1,6 +1,5 @@
 package com.management.inventorypro.ui.theme.screens.dashboard
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -44,24 +44,43 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.management.inventorypro.data.AuthViewModel
-
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(navController: NavHostController) {
-    val selectedItem = remember {mutableStateOf(0)}
+    val selectedItem = remember { mutableStateOf(0) }
     val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
-    var username by remember { mutableStateOf("User") }
 
+    // States for dynamic data
+    var username by remember { mutableStateOf("User") }
+    var itemCount by remember { mutableStateOf(0) }
+
+    // Fetch data when the screen loads
     LaunchedEffect(Unit) {
+        // Get Username
         authViewModel.getUsername {
             username = it
         }
-    }
 
+        // Real-time listener for Inventory Count
+        val database = FirebaseDatabase.getInstance().getReference("inventory")
+        database.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                // Update the state with the total number of items
+                itemCount = snapshot.childrenCount.toInt()
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Silently handle error
+            }
+        })
+    }
 
     Scaffold(
         topBar = {
@@ -72,93 +91,104 @@ fun DashboardScreen(navController: NavHostController) {
                     titleContentColor = Color.White
                 ),
                 actions = {
-                    Button(onClick = {
-
-                        authViewModel.logout(navController,context)
-                    },colors = ButtonDefaults.buttonColors(Color.Red)) {
+                    Button(
+                        onClick = { authViewModel.logout(navController, context) },
+                        colors = ButtonDefaults.buttonColors(Color.Red)
+                    ) {
                         Text(text = "Logout")
                     }
                 }
-
             )
-
         },
         bottomBar = {
-            NavigationBar(containerColor = Color.Blue)  {
+            NavigationBar(containerColor = Color.Blue) {
                 NavigationBarItem(
-                    selected = selectedItem.value==0,
+                    selected = selectedItem.value == 0,
                     onClick = { selectedItem.value = 0 },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home")},
-                    label = { Text(text = "Home")}
+                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
+                    label = { Text(text = "Home") }
                 )
-
-
                 NavigationBarItem(
-                    selected = selectedItem.value==1,
+                    selected = selectedItem.value == 1,
                     onClick = { selectedItem.value = 1 },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings")},
-                    label = { Text(text = "Settings")}
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
+                    label = { Text(text = "Settings") }
                 )
                 NavigationBarItem(
-                    selected = selectedItem.value==2,
+                    selected = selectedItem.value == 2,
                     onClick = { selectedItem.value = 2 },
-                    icon = { Icon(Icons.Filled.Email, contentDescription = "Email")},
-                    label = { Text(text = "Email")}
+                    icon = { Icon(Icons.Filled.Email, contentDescription = "Email") },
+                    label = { Text(text = "Email") }
                 )
                 NavigationBarItem(
-                    selected = selectedItem.value==3,
+                    selected = selectedItem.value == 3,
                     onClick = { navController.navigate("profile") },
-                    icon = { Icon(Icons.Filled.Person, contentDescription = "Person")},
-                    label = { Text(text = "Person")}
+                    icon = { Icon(Icons.Filled.Person, contentDescription = "Person") },
+                    label = { Text(text = "Person") }
                 )
-            }}
+            }
+        }
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding))  {
-            Text(text = "Welcome back $username",
-                fontSize = 25.sp)
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Welcome back $username",
+                fontSize = 25.sp,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly){
-                Card(modifier = Modifier.size(100.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.Blue),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {Column(modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally){
-                    Text(text = "120",color = Color.White, fontSize = 20.sp)
-                    Text(text = "Patients",color = Color.White, fontSize = 20.sp)
-
-                } }
-                Card(modifier = Modifier.size(100.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.Blue),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {Column(modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally){
-                    Text(text = "120",color = Color.White, fontSize = 20.sp)
-                    Text(text = "Patients",color = Color.White, fontSize = 20.sp)
-
-                } }
-                Card(modifier = Modifier.size(100.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.Blue),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {Column(modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally){
-                    Text(text = "120",color = Color.White, fontSize = 20.sp)
-                    Text(text = "Patients",color = Color.White, fontSize = 20.sp)
-
-                } }
-            }
-            Card(
-                onClick = { },
+            // Dynamic Stats Row
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp) ,
+                    .padding(bottom = 24.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // THE LIVE INVENTORY CARD
+                Card(
+                    modifier = Modifier.size(110.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Blue),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "$itemCount", color = Color.White, fontSize = 28.sp)
+                        Text(text = "Items", color = Color.White, fontSize = 16.sp)
+                    }
+                }
+
+                // Placeholder Card 2 (e.g., Active Alerts)
+                Card(
+                    modifier = Modifier.size(110.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Blue),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "0", color = Color.White, fontSize = 28.sp)
+                        Text(text = "Low Stock", color = Color.White, fontSize = 16.sp)
+                    }
+                }
+            }
+
+            // Action: Add New Item
+            Card(
+                onClick = { navController.navigate("add_product") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1)),
                 elevation = CardDefaults.cardElevation(6.dp),
                 shape = RoundedCornerShape(16.dp)
@@ -168,24 +198,26 @@ fun DashboardScreen(navController: NavHostController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Filled.Person,
-                        contentDescription = "Add Patient",
+                        Icons.Filled.ShoppingCart,
+                        contentDescription = "Add Item",
                         tint = Color(0xFF004040),
                         modifier = Modifier.size(40.dp)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = "Add Patient",
+                            text = "Add New Item",
                             fontSize = 18.sp,
                             color = Color.Black
                         )
-                        Text(text="Register new patient details", fontSize=14.sp,color = Color.Gray)
+                        Text(text = "Register a new product", fontSize = 14.sp, color = Color.Gray)
                     }
                 }
             }
+
+            // Action: View Inventory
             Card(
-                onClick = { },
+                onClick = { /* Navigate to your view screen here */ },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
@@ -199,89 +231,27 @@ fun DashboardScreen(navController: NavHostController) {
                 ) {
                     Icon(
                         Icons.Filled.Person,
-                        contentDescription = "Add Patient",
+                        contentDescription = "View List",
                         tint = Color(0xFF004040),
                         modifier = Modifier.size(40.dp)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = "view patient list",
+                            text = "View Inventory",
                             fontSize = 18.sp,
                             color = Color.Black
                         )
-                        Text(text="view patient list", fontSize=14.sp,color = Color.Gray)
+                        Text(text = "Check stock levels", fontSize = 14.sp, color = Color.Gray)
                     }
                 }
             }
-            Card(
-                onClick = { },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .clickable { },
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1)),
-                elevation = CardDefaults.cardElevation(6.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Person,
-                        contentDescription = "Add new",
-                        tint = Color(0xFF004040),
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = "Add Patient",
-                            fontSize = 18.sp,
-                            color = Color.Black
-                        )
-                        Text(text="Add new", fontSize=14.sp,color = Color.Gray)
-                    }
-                }
-            }
-            Card(
-                onClick = { },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1)),
-                elevation = CardDefaults.cardElevation(6.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Person,
-                        contentDescription = "Add Patient",
-                        tint = Color(0xFF004040),
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = "Add Patient",
-                            fontSize = 18.sp,
-                            color = Color.Black
-                        )
-                        Text(text="Register new patient details", fontSize=14.sp,color = Color.Gray)
-                    }
-                }
-            }
-
         }
     }
 }
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun DashboardScreenPreview(){
-        DashboardScreen(navController = rememberNavController())
+fun DashboardScreenPreview() {
+    DashboardScreen(navController = rememberNavController())
 }
