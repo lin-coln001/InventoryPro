@@ -1,82 +1,76 @@
 package com.management.inventorypro.data
 
-
-import android.content.Context
 import android.net.Uri
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import com.cloudinary.android.MediaManager
 import com.cloudinary.android.callback.ErrorInfo
 import com.cloudinary.android.callback.UploadCallback
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.management.inventorypro.models.CustomField
 import com.management.inventorypro.models.ProductModel
 
 class ProductViewModel : ViewModel() {
+    private val auth = FirebaseAuth.getInstance()
+    private val database = FirebaseDatabase.getInstance()
 
-    // 1. State for Dynamic Fields
+    var selectedImageUri by mutableStateOf<Uri?>(null)
+    var isUploading by mutableStateOf(false)
     val customFields = mutableStateListOf<CustomField>()
 
-    // 2. State for the Selected Image
-    var selectedImageUri by mutableStateOf<Uri?>(null)
+    private fun getUserId(): String? = auth.currentUser?.uid
 
-    // 3. Loading State (Useful for showing a spinner in the UI)
-    var isUploading by mutableStateOf(false)
+    fun addNewField() {
+        customFields.add(CustomField("", ""))
+    }
 
-    /**
-     * Main function called by the UI
-     */
-    fun uploadProduct(productName: String, onSuccess: () -> Unit) {
-        isUploading = true
-
-        val uri = selectedImageUri
-        if (uri != null) {
-            // Here we use the non-null 'uri'
-            uploadImageToCloudinary(uri) { imageUrl ->
-                saveProductToFirebase(productName, imageUrl, onSuccess)
-            }
-        } else {
-            saveProductToFirebase(productName, "", onSuccess)
+    fun removeField(index: Int) {
+        if (index in customFields.indices) {
+            customFields.removeAt(index)
         }
     }
 
     /**
-     * Step 1: Upload the raw file to Cloudinary
+     * Handles the sequential flow:
+     * 1. Upload image to Cloudinary
+     * 2. Receive URL
+     * 3. Save Name + URL + CustomFields to user-specific Firebase path
      */
-    private fun uploadImageToCloudinary(uri: Uri, onUrlReady: (String) -> Unit) {
+    fun uploadProduct(productName: String, onComplete: () -> Unit) {
+        val uid = getUserId() ?: return
+        val uri = selectedImageUri ?: return // Ensure image exists
+
+        isUploading = true
+
+        // Replace "your_upload_preset" with the unsigned preset from your Cloudinary console
         MediaManager.get().upload(uri)
-            .unsigned("image_folder") // REPLACE with your preset
+            .unsigned("image_folder")
             .callback(object : UploadCallback {
+                override fun onStart(requestId: String?) { }
+                override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) { }
+
                 override fun onSuccess(requestId: String?, resultData: Map<*, *>?) {
-                    val secureUrl = resultData?.get("secure_url").toString()
-                    onUrlReady(secureUrl)
+                    // WE HAVE THE URL! Now save to Firebase
+                    val imageUrl = resultData?.get("secure_url").toString()
+                    saveToFirebase(uid, productName, imageUrl, onComplete)
                 }
 
                 override fun onError(requestId: String?, error: ErrorInfo?) {
                     isUploading = false
-                    // You could add a "errorMessage" state here to show in UI
+                    // Logic for error handling (Toasts, etc.)
                 }
 
-                override fun onStart(requestId: String?) {}
-                override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
-                override fun onReschedule(requestId: String?, error: ErrorInfo?) {}
+                override fun onReschedule(requestId: String?, error: ErrorInfo?) { }
             }).dispatch()
     }
 
-    /**
-     * Step 2: Save the final Product object to Firebase
-     */
-    private fun saveProductToFirebase(name: String, imageUrl: String, onSuccess: () -> Unit) {
-        val database = FirebaseDatabase.getInstance().getReference("inventory")
-        val productId = database.push().key ?: return
+    private fun saveToFirebase(uid: String, name: String, imageUrl: String, onComplete: () -> Unit) {
+        val userInventoryRef = database.getReference("users").child(uid).child("inventory").push()
+        val productId = userInventoryRef.key ?: ""
 
-        // Convert UI list of fields to a Map for Firebase
-        val fieldsMap = customFields
-            .filter { it.key.isNotBlank() }
-            .associate { it.key to it.value }
+        // Convert list of CustomField objects to a Map for Firebase
+        val fieldsMap = customFields.associate { it.key to it.value }
 
         val product = ProductModel(
             id = productId,
@@ -85,19 +79,37 @@ class ProductViewModel : ViewModel() {
             customFields = fieldsMap
         )
 
-        database.child(productId).setValue(product)
-            .addOnSuccessListener {
-                isUploading = false
-                customFields.clear()
-                selectedImageUri = null
-                onSuccess()
-            }
-            .addOnFailureListener {
-                isUploading = false
+        userInventoryRef.setValue(product).addOnCompleteListener {
+            isUploading = false
+            onComplete()
+        }
+    }
+
+    // UPDATED: Fetches only the product belonging to the logged-in user
+    fun fetchProductById(productId: String, onResult: (ProductModel) -> Unit) {
+        val uid = getUserId() ?: return
+        database.getReference("users").child(uid).child("inventory").child(productId)
+            .get().addOnSuccessListener { snapshot ->
+                val product = snapshot.getValue(ProductModel::class.java)
+                product?.let { onResult(it) }
             }
     }
 
-    fun addNewField() {
-        customFields.add(CustomField())
+    // UPDATED: Updates the product in the user-specific path
+    fun updateProduct(productId: String, name: String, onComplete: () -> Unit) {
+        val uid = getUserId() ?: return
+        isUploading = true
+
+        val fieldsMap = customFields.associate { it.key to it.value }
+        val updates = mapOf(
+            "name" to name,
+            "customFields" to fieldsMap
+        )
+
+        database.getReference("users").child(uid).child("inventory").child(productId)
+            .updateChildren(updates).addOnCompleteListener {
+                isUploading = false
+                onComplete()
+            }
     }
 }

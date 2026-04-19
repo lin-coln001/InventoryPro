@@ -62,24 +62,35 @@ fun DashboardScreen(navController: NavHostController) {
     var itemCount by remember { mutableStateOf(0) }
 
     // Fetch data when the screen loads
+// Inside DashboardScreen.kt
     LaunchedEffect(Unit) {
-        // Get Username
+        // 1. Get Username
         authViewModel.getUsername {
             username = it
         }
 
-        // Real-time listener for Inventory Count
-        val database = FirebaseDatabase.getInstance().getReference("inventory")
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                // Update the state with the total number of items
-                itemCount = snapshot.childrenCount.toInt()
-            }
+        // 2. Get Current User UID for the correct path
+        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        val uid = currentUser?.uid
 
-            override fun onCancelled(error: DatabaseError) {
-                // Silently handle error
-            }
-        })
+        if (uid != null) {
+            // POINT TO THE USER'S SPECIFIC FOLDER
+            val database = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(uid)
+                .child("inventory")
+
+            database.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    // Now it counts only the items belonging to THIS user
+                    itemCount = snapshot.childrenCount.toInt()
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    // Handle error
+                }
+            })
+        }
     }
 
     Scaffold(
@@ -178,7 +189,7 @@ fun DashboardScreen(navController: NavHostController) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(text = "0", color = Color.White, fontSize = 28.sp)
-                        Text(text = "Low Stock", color = Color.White, fontSize = 16.sp)
+                        Text(text = "categories", color = Color.White, fontSize = 16.sp)
                     }
                 }
             }
@@ -217,7 +228,7 @@ fun DashboardScreen(navController: NavHostController) {
 
             // Action: View Inventory
             Card(
-                onClick = { /* Navigate to your view screen here */ },
+                onClick = {navController.navigate("view_inventory") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
