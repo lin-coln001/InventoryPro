@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -127,9 +127,9 @@ fun DashboardScreen(navController: NavHostController) {
                 )
                 NavigationBarItem(
                     selected = selectedItem.value == 2,
-                    onClick = { selectedItem.value = 2 },
-                    icon = { Icon(Icons.Filled.Email, contentDescription = "Email") },
-                    label = { Text(text = "Email") }
+                    onClick = {navController.navigate("tips") },
+                    icon = { Icon(Icons.Filled.Lightbulb, contentDescription = "Tips") },
+                    label = { Text(text = "Tips") }
                 )
                 NavigationBarItem(
                     selected = selectedItem.value == 3,
@@ -209,7 +209,7 @@ fun DashboardScreen(navController: NavHostController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Filled.ShoppingCart,
+                        Icons.Filled.Inventory,
                         contentDescription = "Add Item",
                         tint = Color(0xFF004040),
                         modifier = Modifier.size(40.dp)
