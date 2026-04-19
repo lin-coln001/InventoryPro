@@ -121,7 +121,7 @@ fun DashboardScreen(navController: NavHostController) {
                 )
                 NavigationBarItem(
                     selected = selectedItem.value == 1,
-                    onClick = { selectedItem.value = 1 },
+                    onClick = { navController.navigate("settings") },
                     icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
                     label = { Text(text = "Settings") }
                 )
@@ -133,7 +133,7 @@ fun DashboardScreen(navController: NavHostController) {
                 )
                 NavigationBarItem(
                     selected = selectedItem.value == 3,
-                    onClick = { navController.navigate("profile") },
+                    onClick = { selectedItem.value = 3 },
                     icon = { Icon(Icons.Filled.Person, contentDescription = "Person") },
                     label = { Text(text = "Person") }
                 )

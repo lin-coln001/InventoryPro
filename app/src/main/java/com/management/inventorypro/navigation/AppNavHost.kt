@@ -12,6 +12,7 @@ import com.management.inventorypro.ui.theme.screens.dashboard.DashboardScreen
 import com.management.inventorypro.ui.theme.screens.login.LoginScreen
 
 import com.management.inventorypro.ui.theme.screens.register.RegisterScreen
+import com.management.inventorypro.ui.theme.screens.settings.SettingsScreen
 import com.management.inventorypro.ui.theme.screens.update.UpdateProductScreen
 import com.management.inventorypro.ui.theme.screens.view.ViewInventoryScreen
 
@@ -47,6 +48,9 @@ fun AppNavHost(
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId")
             UpdateProductScreen(navController, productId)
+        }
+        composable("settings"){
+            SettingsScreen(navController)
         }
 
 }}

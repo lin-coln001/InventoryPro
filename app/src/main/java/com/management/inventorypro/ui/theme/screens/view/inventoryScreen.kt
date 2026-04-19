@@ -55,14 +55,9 @@ fun ViewInventoryScreen(navController: NavController, viewModel: InventoryViewMo
                 items(viewModel.products) { product ->
                     ProductItemCard(
                         product = product,
-                        onDelete = {
-                            // Logic to delete from Firebase
-                            viewModel.deleteProduct(product.id)
-                        },
-                        onEdit = {
-                            // Pass the product ID to your Update Screen
-                            navController.navigate("update_product/${product.id}")
-                        }
+                        maxFields = viewModel.maxFieldsToShow, // Pass the value from the ViewModel
+                        onDelete = { viewModel.deleteProduct(product.id) },
+                        onEdit = { navController.navigate("update_product/${product.id}") }
                     )
                 }
             }
@@ -73,6 +68,7 @@ fun ViewInventoryScreen(navController: NavController, viewModel: InventoryViewMo
 @Composable
 fun ProductItemCard(
     product: ProductModel,
+    maxFields: Int,
     onDelete: () -> Unit,
     onEdit: () -> Unit
 ) {
@@ -102,6 +98,7 @@ fun ProductItemCard(
 
             Spacer(modifier = Modifier.width(16.dp))
 
+            // Inside ProductItemCard
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = product.name,
@@ -109,14 +106,14 @@ fun ProductItemCard(
                     fontWeight = FontWeight.Bold
                 )
 
-                // REMOVE .take(2) to show everything
-                product.customFields.forEach { (key, value) ->
-                    Text(
-                        text = "$key: $value",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.DarkGray
-                    )
+                val allFields = product.customFields.toList()
+
+                val fieldsToDisplay = if (maxFields == 0) allFields else allFields.take(maxFields)
+
+                fieldsToDisplay.forEach { (key, value) ->
+                    Text(text = "$key: $value")
                 }
+            }
             }
 
             // DELETE BUTTON
@@ -129,4 +126,3 @@ fun ProductItemCard(
             }
         }
     }
-}

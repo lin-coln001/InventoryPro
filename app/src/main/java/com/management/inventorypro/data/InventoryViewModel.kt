@@ -10,13 +10,48 @@ class InventoryViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance()
 
+    // State for the list of products
     var products = mutableStateListOf<ProductModel>()
+
+    // State for display settings (0 = Show All)
+    // We use mutableIntStateOf so the UI recomposes when this changes
+    var maxFieldsToShow by mutableIntStateOf(0)
+
     var isLoading by mutableStateOf(true)
 
     init {
+        // Start both listeners as soon as the ViewModel is created
+        fetchMaxFieldsSetting()
         fetchProducts()
     }
 
+    /**
+     * Listen for changes to the user's specific display preferences.
+     * Path: users/$uid/settings/maxVisibleFields
+     */
+    private fun fetchMaxFieldsSetting() {
+        val uid = auth.currentUser?.uid ?: return
+        val settingsRef = database.getReference("users")
+            .child(uid)
+            .child("settings")
+            .child("maxVisibleFields")
+
+        settingsRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                // Update our state variable. Default to 0 (Unlimited) if not found.
+                maxFieldsToShow = snapshot.getValue(Int::class.java) ?: 0
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Handle database errors if necessary
+            }
+        })
+    }
+
+    /**
+     * Listen for changes to the user's specific inventory list.
+     * Path: users/$uid/inventory
+     */
     private fun fetchProducts() {
         val uid = auth.currentUser?.uid
         if (uid == null) {
@@ -24,7 +59,6 @@ class InventoryViewModel : ViewModel() {
             return
         }
 
-        // UPDATED: Listener points to users/[uid]/inventory
         val userRef = database.getReference("users").child(uid).child("inventory")
 
         userRef.addValueEventListener(object : ValueEventListener {
@@ -43,11 +77,15 @@ class InventoryViewModel : ViewModel() {
         })
     }
 
-    // UPDATED: Deletes from the user-specific path
+    /**
+     * Deletes a product from the user's specific inventory path.
+     */
     fun deleteProduct(productId: String) {
         val uid = auth.currentUser?.uid ?: return
-        database.getReference("users").child(uid).child("inventory").child(productId)
+        database.getReference("users")
+            .child(uid)
+            .child("inventory")
+            .child(productId)
             .removeValue()
     }
-
 }
