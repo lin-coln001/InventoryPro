@@ -1,5 +1,6 @@
 package com.management.inventorypro.ui.theme.screens.register
 
+import android.os.Build.VERSION.SDK_INT
 import com.management.inventorypro.R
 
 import androidx.compose.foundation.Image
@@ -33,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +46,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.Coil.imageLoader
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import com.management.inventorypro.data.AuthViewModel
 
 
@@ -57,19 +65,30 @@ fun RegisterScreen(navController: NavController){
     var authViewModel: AuthViewModel = viewModel( )
 
     val context = LocalContext.current
+    val imageLoader = ImageLoader.Builder(context)
+        .components {
+            if (SDK_INT >= 28) {
+                add(ImageDecoderDecoder.Factory())
+            } else {
+                add(GifDecoder.Factory())
+            }
+        }
+        .build()
     Column(
         modifier= Modifier.fillMaxSize(),
 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center) {
-        Image(
-            painter = painterResource(id = R.drawable.ar12),
-            contentDescription = "logo",
+        AsyncImage(
+            model = R.drawable.welcome_aboard, // Your GIF name
+            imageLoader = imageLoader,     // Use the loader we just made
+            contentDescription = "Register Animation",
             modifier = Modifier
                 .size(140.dp)
-                .clip(CircleShape)
-                .border(2.dp,Color.White,CircleShape)
-                .shadow(4.dp,CircleShape))
+                .clip(RectangleShape),
+//                .border(2.dp, Color.White, CircleShape),
+            contentScale = ContentScale.Crop
+        )
         Text(text="Register Here",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,

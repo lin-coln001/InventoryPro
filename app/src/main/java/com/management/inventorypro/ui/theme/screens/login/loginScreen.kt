@@ -1,6 +1,7 @@
 package com.management.inventorypro.ui.theme.screens.login
 
 import android.content.Context
+import android.os.Build.VERSION.SDK_INT
 import com.management.inventorypro.R
 
 import androidx.compose.foundation.Image
@@ -33,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +45,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import com.management.inventorypro.data.AuthViewModel
 
 
@@ -51,6 +58,15 @@ fun LoginScreen(navController: NavController) {
     var password by remember { mutableStateOf("") }
     val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
+    val imageLoader = ImageLoader.Builder(context)
+        .components {
+            if (SDK_INT >= 28) {
+                add(ImageDecoderDecoder.Factory())
+            } else {
+                add(GifDecoder.Factory())
+            }
+        }
+        .build()
 
     // Initialize rememberMe from storage
     val sharedPref = remember { context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE) }
@@ -61,14 +77,15 @@ fun LoginScreen(navController: NavController) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center // Keeps everything centered vertically
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.ar12),
-            contentDescription = "logo",
+        AsyncImage(
+            model = R.drawable.hello, // Your GIF name
+            imageLoader = imageLoader,     // Use the loader we just made
+            contentDescription = "Login Animation",
             modifier = Modifier
                 .size(140.dp)
-                .clip(CircleShape)
-                .border(2.dp, Color.White, CircleShape)
-                .shadow(4.dp, CircleShape)
+                .clip(RectangleShape),
+//                .border(2.dp, Color.White, CircleShape),
+            contentScale = ContentScale.Crop
         )
 
         Text(

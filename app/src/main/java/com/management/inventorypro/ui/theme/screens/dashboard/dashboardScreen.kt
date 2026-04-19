@@ -1,5 +1,6 @@
 package com.management.inventorypro.ui.theme.screens.dashboard
 
+import android.os.Build.VERSION.SDK_INT
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,7 +37,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -44,10 +48,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.management.inventorypro.R
 import com.management.inventorypro.data.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +65,15 @@ fun DashboardScreen(navController: NavHostController) {
     val selectedItem = remember { mutableStateOf(0) }
     val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
+    val imageLoader = ImageLoader.Builder(context)
+        .components {
+            if (SDK_INT >= 28) {
+                add(ImageDecoderDecoder.Factory())
+            } else {
+                add(GifDecoder.Factory())
+            }
+        }
+        .build()
 
     // States for dynamic data
     var username by remember { mutableStateOf("User") }
@@ -68,6 +86,7 @@ fun DashboardScreen(navController: NavHostController) {
         authViewModel.getUsername {
             username = it
         }
+
 
         // 2. Get Current User UID for the correct path
         val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
@@ -150,6 +169,16 @@ fun DashboardScreen(navController: NavHostController) {
                 text = "Welcome back $username",
                 fontSize = 25.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
+            )
+            AsyncImage(
+                model = R.drawable.welcome_back, // Your GIF name
+                imageLoader = imageLoader,     // Use the loader we just made
+                contentDescription = "Dashboard Animation",
+                modifier = Modifier
+                    .size(140.dp)
+                    .clip(RectangleShape),
+//                .border(2.dp, Color.White, CircleShape),
+                contentScale = ContentScale.Crop
             )
 
             // Dynamic Stats Row
