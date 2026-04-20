@@ -4,36 +4,59 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import kotlin.collections.take
-// This is the specific Coil import for AsyncImage
 import coil.compose.AsyncImage
 import com.management.inventorypro.data.InventoryViewModel
-// Ensure this matches your actual package path for the Product model
 import com.management.inventorypro.models.ProductModel
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ViewInventoryScreen(navController: NavController, viewModel: InventoryViewModel = viewModel()) {
+
+    // --- DIALOG STATE ---
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var productToDelete by remember { mutableStateOf<ProductModel?>(null) }
+
+    // --- THE ALERT DIALOG UI ---
+    if (showDeleteDialog && productToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(text = "Confirm Deletion") },
+            text = { Text("Are you sure you want to delete '${productToDelete!!.name}'? This cannot be undone.") },
+            confirmButton = {
+                Button(
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    onClick = {
+                        viewModel.deleteProduct(productToDelete!!.id)
+                        showDeleteDialog = false
+                        productToDelete = null
+                    }
+                ) {
+                    Text("Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Current Items in stock.") },
+                title = { Text("Current Inventory") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -47,16 +70,16 @@ fun ViewInventoryScreen(navController: NavController, viewModel: InventoryViewMo
                 CircularProgressIndicator()
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize()
-            ) {
-                // Explicitly tell the compiler we are using your Product class
-                // Inside ViewInventoryScreen's LazyColumn
+            LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
                 items(viewModel.products) { product ->
                     ProductItemCard(
                         product = product,
-                        maxFields = viewModel.maxFieldsToShow, // Pass the value from the ViewModel
-                        onDelete = { viewModel.deleteProduct(product.id) },
+                        maxFields = viewModel.maxFieldsToShow,
+                        onDelete = {
+                            // Instead of deleting, we trigger the dialog
+                            productToDelete = product
+                            showDeleteDialog = true
+                        },
                         onEdit = { navController.navigate("update_product/${product.id}") }
                     )
                 }
@@ -66,63 +89,47 @@ fun ViewInventoryScreen(navController: NavController, viewModel: InventoryViewMo
 }
 
 @Composable
-fun ProductItemCard(
-    product: ProductModel,
-    maxFields: Int,
-    onDelete: () -> Unit,
-    onEdit: () -> Unit
-) {
+fun ProductItemCard(product: ProductModel, maxFields: Int, onDelete: () -> Unit, onEdit: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() }, // Navigate to update screen
-        elevation = CardDefaults.cardElevation(4.dp),
-        shape = RoundedCornerShape(12.dp)
+            .padding(8.dp)
+            .clickable { onEdit() },
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Image from Cloudinary
-            Card(
-                modifier = Modifier.size(70.dp),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                AsyncImage(
-                    model = product.imageUrl,
-                    contentDescription = product.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+            // Product Image
+            AsyncImage(
+                model = product.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp)
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Inside ProductItemCard
+            // Product Details
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = product.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(text = product.name, style = MaterialTheme.typography.titleMedium)
 
-                val allFields = product.customFields.toList()
+                // Show limited fields based on settings
+                val fieldsToShow = if (maxFields == 0) {
+                    product.customFields.toList()
+                } else {
+                    product.customFields.toList().take(maxFields)
+                }
 
-                val fieldsToDisplay = if (maxFields == 0) allFields else allFields.take(maxFields)
-
-                fieldsToDisplay.forEach { (key, value) ->
-                    Text(text = "$key: $value")
+                fieldsToShow.forEach { (key, value) ->
+                    Text(text = "$key: $value", style = MaterialTheme.typography.bodySmall)
                 }
             }
-            }
 
-            // DELETE BUTTON
+            // Delete Button
             IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = Color.Red
-                )
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
             }
         }
     }
+}

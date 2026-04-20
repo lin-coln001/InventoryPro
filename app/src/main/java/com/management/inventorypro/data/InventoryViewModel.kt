@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.management.inventorypro.models.ProductModel
+import kotlin.jvm.java
+
 
 class InventoryViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
