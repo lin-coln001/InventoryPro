@@ -50,6 +50,7 @@ import coil.compose.AsyncImage
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import com.management.inventorypro.data.AuthViewModel
+import com.management.inventorypro.ui.theme.screens.login.LoginScreen
 
 
 @Composable
@@ -160,7 +161,7 @@ fun LoginScreen(navController: NavController) {
         Spacer(modifier = Modifier.size(12.dp))
 
         Text(
-            text = "Bypass to Dashboard",
+            text = "forgot password?",
             color = Color.Gray,
             fontSize = 12.sp,
             modifier = Modifier.clickable { navController.navigate("dashboard") }

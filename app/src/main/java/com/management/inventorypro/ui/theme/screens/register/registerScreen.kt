@@ -52,6 +52,7 @@ import coil.compose.AsyncImage
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import com.management.inventorypro.data.AuthViewModel
+import com.management.inventorypro.ui.theme.screens.register.RegisterScreen
 
 
 @Composable
@@ -142,27 +143,27 @@ fun RegisterScreen(navController: NavController){
             confirmpassword=confirmpassword,
             navController=navController,
             context=context)}) {Text(text = "register") }
+
+        Spacer(modifier = Modifier.size(24.dp))
+
         Row {
-            Text(text = "Already Registered?",
-                color=Color.Red)
-            Spacer(modifier = Modifier.width(5.dp))
-            Text(text = "log in here",
-                color=Color.Blue,
-                modifier = Modifier.clickable{
-                    navController.navigate("login")
-
-                })
-
+            Text(text = "already have an account?", color = Color.Red)
+            Text(
+                text = "Login here",
+                color = Color.Blue,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable { navController.navigate("login") }
+            )
         }
-        Row {
-            Text(text = "Bypass to Dashboard",
-                color=Color.Red,
-                modifier = Modifier.clickable{
-                    navController.navigate("dashboard")
 
-                })
+        Spacer(modifier = Modifier.size(12.dp))
 
-        }
+        Text(
+            text = "forgot password?",
+            color = Color.Gray,
+            fontSize = 12.sp,
+            modifier = Modifier.clickable { navController.navigate("dashboard") }
+        )
 
     }
 }

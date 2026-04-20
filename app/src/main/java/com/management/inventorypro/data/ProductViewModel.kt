@@ -10,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.management.inventorypro.models.CustomField
 import com.management.inventorypro.models.ProductModel
+import kotlin.to
 
 class ProductViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()

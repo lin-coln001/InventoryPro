@@ -5,6 +5,4 @@ data class UserModel(
     val phone: String="",
     val email: String="",
     val userId: String=""
-){
-
-}
+)
