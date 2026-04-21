@@ -4,126 +4,100 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 
-data class AppFeatureTip(
+data class InventoryTip(
     val title: String,
     val description: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector
+    val icon: ImageVector
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TipsScreen(navController: NavController) {
-    val appTips = listOf(
-        AppFeatureTip(
-            "Stay Logged In",
-            "Tired of typing? Check 'Remember Me' on the login screen to skip the password prompt next time you open InventoryPro.",
-            Icons.Default.Lock
+fun TipsScreen(navController: androidx.navigation.NavController) {
+    val tips = listOf(
+        InventoryTip(
+            "Folder Navigation",
+            "Use the arrows next to category names to expand or collapse sections. A 'Down' arrow means the folder is open!",
+            Icons.Default.Lightbulb
         ),
-        AppFeatureTip(
-            "Custom Attributes",
-            "Not every product is the same. Use 'Add Field' when creating an item to add unique info like Serial Numbers, Expiry Dates, or Batch IDs.",
-            Icons.Default.AddCircle
+        InventoryTip(
+            "Smart Categories",
+            "Consistency is key! Use the dropdown when adding items to stick to existing categories like 'Cars' or 'Electronics' to keep your view organized.",
+            Icons.Default.Info
         ),
-        AppFeatureTip(
-            "Safe Deletion",
-            "Accidents happen! We've added a confirmation dialog to the delete button so you don't lose your data by a wrong tap.",
-            Icons.Default.CheckCircle
+        InventoryTip(
+            "Custom Details",
+            "Don't just stop at a name! Use 'Add Field' to track specific data like Serial Numbers, Expiry Dates, or Color for each item.",
+            Icons.Default.Lightbulb
         ),
-        AppFeatureTip(
-            "Visual Inventory",
-            "Items with images are easier to find. Tap the 'Add Image' box to upload a photo from your gallery for any product.",
-            Icons.Default.AccountBox
+        InventoryTip(
+            "Quick Updates",
+            "Tap any product card to enter the Edit screen. You can change the photo, move it to a different category, or delete it entirely.",
+            Icons.Default.Info
         ),
-        AppFeatureTip(
-            "Quick Navigation",
-            "Tap any item in the 'View Inventory' list to jump straight into the Update screen and edit its details instantly.",
-            Icons.Default.Send
+        InventoryTip(
+            "Image Placeholders",
+            "If an item doesn't have a photo yet, the app will show a default placeholder. You can add a photo later by editing the product.",
+            Icons.Default.Lightbulb
         )
     )
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("How to Use InventoryPro") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
+            TopAppBar(title = { Text("Inventory Pro Tips") })
         }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(padding)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
-                Text(
-                    text = "App Guide & Tricks",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Red // Matching your Login Screen theme
-                )
-                Text(
-                    text = "Get the most out of your management system with these quick features.",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Divider(color = Color.LightGray, thickness = 1.dp)
-            }
-
-            items(appTips) { tip ->
-                AppTipCard(tip)
+            items(tips) { tip ->
+                TipCard(tip)
             }
         }
     }
 }
 
 @Composable
-fun AppTipCard(tip: AppFeatureTip) {
-    ElevatedCard(
+fun TipCard(tip: InventoryTip) {
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = tip.icon,
                 contentDescription = null,
-                tint = Color.Red,
-                modifier = Modifier.size(28.dp)
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
                     text = tip.title,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 16.sp,
-                    color = Color.Black
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = tip.description,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    color = Color.DarkGray
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
             }
         }

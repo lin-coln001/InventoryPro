@@ -1,6 +1,7 @@
 package com.management.inventorypro.ui.theme.screens.add
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -11,7 +12,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete // Added this
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,21 +22,28 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.management.inventorypro.data.ProductViewModel
-import com.management.inventorypro.ui.theme.screens.dashboard.DashboardScreen
+import com.management.inventorypro.models.ProductModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddProductScreen(
     navController: NavController,
     viewModel: ProductViewModel = viewModel()
 ) {
+    // --- 1. STATE VARIABLES ---
     var productName by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Uncategorized") }
+    val context = LocalContext.current
+
+    val existingCategories = remember { mutableStateListOf("Uncategorized", "Cars", "Electronics", "Furniture") }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -52,7 +61,7 @@ fun AddProductScreen(
                 Text(text = "New Inventory Item", style = MaterialTheme.typography.headlineMedium)
             }
 
-            // 1. Image Upload Section
+            // --- 2. IMAGE UPLOAD ---
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -83,7 +92,7 @@ fun AddProductScreen(
                 }
             }
 
-            // 2. Product Name
+            // --- 3. PRODUCT NAME ---
             item {
                 OutlinedTextField(
                     value = productName,
@@ -94,7 +103,16 @@ fun AddProductScreen(
                 )
             }
 
-            // 3. Dynamic Fields Section Header
+            // --- 4. CATEGORY SELECTOR ---
+            item {
+                CategorySelector(
+                    currentCategory = category,
+                    onCategorySelected = { category = it },
+                    existingCategories = existingCategories
+                )
+            }
+
+            // --- 5. CUSTOM DETAILS HEADER ---
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -110,12 +128,12 @@ fun AddProductScreen(
                 }
             }
 
-            // 4. The Dynamic List with Delete Button
+            // --- 6. DYNAMIC CUSTOM FIELDS ---
             itemsIndexed(viewModel.customFields) { index, field ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically // Center the trash icon
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
                         value = field.key,
@@ -131,58 +149,107 @@ fun AddProductScreen(
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
-
-                    // THE REMOVE BUTTON
-                    IconButton(
-                        onClick = { viewModel.removeField(index) },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Remove Field",
-                            tint = Color.Red
-                        )
+                    IconButton(onClick = { viewModel.removeField(index) }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color.Red)
                     }
                 }
             }
 
-            // 5. Save Button
+            // --- 7. SAVE BUTTON ---
             item {
                 Button(
                     onClick = {
-                        viewModel.uploadProduct(productName) {
-                            navController.popBackStack()
+                        if (productName.isNotBlank()) {
+                            val id = System.currentTimeMillis().toString()
+
+                            // Convert list of fields to a Map for Firebase
+                            val fieldsMap = viewModel.customFields.associate { it.key to it.value }
+
+                            val newProduct = ProductModel(
+                                id = id,
+                                name = productName,
+                                imageUrl = viewModel.selectedImageUri?.toString() ?: "",
+                                category = category.ifBlank { "Uncategorized" },
+                                customFields = fieldsMap
+                            )
+
+                            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                            val database = FirebaseDatabase.getInstance().getReference("users")
+                                .child(userId).child("inventory").child(id)
+
+                            database.setValue(newProduct).addOnSuccessListener {
+                                Toast.makeText(context, "Item added successfully!", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack()
+                            }.addOnFailureListener {
+                                Toast.makeText(context, "Error: ${it.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Please enter a product name", Toast.LENGTH_SHORT).show()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                    enabled = productName.isNotBlank() && !viewModel.isUploading
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
                 ) {
-                    if (viewModel.isUploading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("Save to Inventory")
-                    }
+                    Text("Add Product")
                 }
             }
         }
 
         if (viewModel.isUploading) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.1f))
-                    .clickable(enabled = false) {}
-            )
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
+// --- HELPER COMPONENT (Outside the main screen) ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddProductScreenPreview() {
-        AddProductScreen(navController = rememberNavController())
+fun CategorySelector(
+    currentCategory: String,
+    onCategorySelected: (String) -> Unit,
+    existingCategories: List<String>
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text(
+            text = "Category",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                value = currentCategory,
+                onValueChange = { onCategorySelected(it) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                placeholder = { Text("Select or type category") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                leadingIcon = { Icon(Icons.Default.List, contentDescription = null) }
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                existingCategories.forEach { selectionOption ->
+                    DropdownMenuItem(
+                        text = { Text(selectionOption) },
+                        onClick = {
+                            onCategorySelected(selectionOption)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
 }

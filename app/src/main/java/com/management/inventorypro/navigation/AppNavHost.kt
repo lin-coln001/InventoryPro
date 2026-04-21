@@ -85,6 +85,10 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         composable("profile") {
              ProfileScreen(navController)
         }
+        composable("update_product/{productId}") { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId")
+            UpdateProductScreen(navController, productId)
+        }
     }
 
     }

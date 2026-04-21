@@ -1,7 +1,11 @@
 package com.management.inventorypro.ui.theme.screens.profile
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,7 +15,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -19,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
@@ -40,26 +47,29 @@ fun ProfileScreen(navController: NavController) {
 
     var isEditing by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
+    var imageUrl by remember { mutableStateOf("") }
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { imageUrl = it.toString() }
+    }
 
     // --- FETCH DATA FROM "User" PATH ---
     LaunchedEffect(Unit) {
         database.get().addOnSuccessListener { snapshot ->
             if (snapshot.exists()) {
-                // Pulling keys exactly as defined in your UserModel
                 username = snapshot.child("username").value?.toString() ?: ""
                 phoneNumber = snapshot.child("phone").value?.toString() ?: ""
+                imageUrl = snapshot.child("profileImageUrl").value?.toString() ?: "" // Fetch image
             }
             isLoading = false
-        }.addOnFailureListener {
-            isLoading = false
-            Toast.makeText(context, "Error fetching profile", Toast.LENGTH_SHORT).show()
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Profile") },
+                title = { Text("Your Profile") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -68,16 +78,14 @@ fun ProfileScreen(navController: NavController) {
                 actions = {
                     IconButton(onClick = {
                         if (isEditing) {
-                            // Save only the changed fields
                             val updates = mapOf(
                                 "username" to username,
-                                "phone" to phoneNumber
+                                "phone" to phoneNumber,
+                                "profileImageUrl" to imageUrl // Save the image path
                             )
                             database.updateChildren(updates).addOnSuccessListener {
                                 Toast.makeText(context, "Profile Updated!", Toast.LENGTH_SHORT).show()
                                 isEditing = false
-                            }.addOnFailureListener {
-                                Toast.makeText(context, "Update failed", Toast.LENGTH_SHORT).show()
                             }
                         } else {
                             isEditing = true
@@ -108,11 +116,39 @@ fun ProfileScreen(navController: NavController) {
                 // --- AVATAR ---
                 Box(
                     modifier = Modifier
-                        .size(100.dp)
-                        .background(Color.Red.copy(alpha = 0.1f), CircleShape),
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .background(Color.Red.copy(alpha = 0.1f))
+                        .clickable(enabled = isEditing) { launcher.launch("image/*") }, // Only clickable in Edit mode
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(60.dp), tint = Color.Red)
+                    if (imageUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(60.dp),
+                            tint = Color.Red
+                        )
+                    }
+
+                    // Show a small "camera" overlay when editing
+                    if (isEditing) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = Color.White)
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
