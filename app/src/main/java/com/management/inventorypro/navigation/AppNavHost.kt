@@ -12,9 +12,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.management.inventorypro.ui.theme.screens.add.AddProductScreen
+
 import com.management.inventorypro.ui.theme.screens.dashboard.DashboardScreen
 import com.management.inventorypro.ui.theme.screens.landing.OnboardingScreen
+
 import com.management.inventorypro.ui.theme.screens.login.LoginScreen
+import com.management.inventorypro.ui.theme.screens.profile.ProfileScreen
 
 import com.management.inventorypro.ui.theme.screens.register.RegisterScreen
 import com.management.inventorypro.ui.theme.screens.settings.SettingsScreen
@@ -78,6 +81,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         }
         composable("landing") {
             OnboardingScreen(navController)
+        }
+        composable("profile") {
+             ProfileScreen(navController)
         }
     }
 

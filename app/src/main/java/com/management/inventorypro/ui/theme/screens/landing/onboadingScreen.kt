@@ -186,4 +186,4 @@ fun OnboardingScreen(navController: NavController){
 @Preview
 @Composable
 fun OnboardingScreenPreview(){
-    OnboardingScreen(navController = NavController(LocalContext.current))}
+        OnboardingScreen(rememberNavController())}

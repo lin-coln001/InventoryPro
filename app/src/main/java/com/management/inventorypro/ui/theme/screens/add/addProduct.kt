@@ -184,5 +184,5 @@ fun AddProductScreen(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun AddProductScreenPreview() {
-    AddProductScreen(navController = rememberNavController())
+        AddProductScreen(navController = rememberNavController())
 }

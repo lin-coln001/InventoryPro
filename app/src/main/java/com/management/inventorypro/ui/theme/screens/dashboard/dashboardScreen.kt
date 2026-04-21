@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.ImageLoader
 import coil.compose.AsyncImage
@@ -66,6 +67,9 @@ fun DashboardScreen(navController: NavHostController) {
     val selectedItem = remember { mutableStateOf(0) }
     val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     val imageLoader = ImageLoader.Builder(context)
         .components {
             if (SDK_INT >= 28) {
@@ -152,10 +156,10 @@ fun DashboardScreen(navController: NavHostController) {
                     label = { Text(text = "Tips") }
                 )
                 NavigationBarItem(
-                    selected = selectedItem.value == 3,
-                    onClick = { selectedItem.value = 3 },
-                    icon = { Icon(Icons.Filled.Person, contentDescription = "Person") },
-                    label = { Text(text = "Person") }
+                    selected = currentRoute == "profile",
+                    onClick = { navController.navigate("profile") },
+                    icon = { Icon(Icons.Filled.Person, contentDescription = "profile") },
+                    label = { Text(text = "Profile") }
                 )
             }
         }
