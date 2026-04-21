@@ -58,6 +58,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.management.inventorypro.R
 import com.management.inventorypro.data.AuthViewModel
+import com.management.inventorypro.ui.theme.screens.dashboard.DashboardScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -293,5 +294,5 @@ fun DashboardScreen(navController: NavHostController) {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun DashboardScreenPreview() {
-    DashboardScreen(navController = rememberNavController())
+        DashboardScreen( rememberNavController())
 }

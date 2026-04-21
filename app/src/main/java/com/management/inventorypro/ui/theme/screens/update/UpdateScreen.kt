@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -103,7 +104,7 @@ fun UpdateProductScreen(navController: NavController, productId: String?) {
                         if (imageUrl.isNotEmpty()) {
                             AsyncImage(
                                 model = imageUrl,
-                                contentDescription = "Product Image",
+                                contentDescription = "Item Image",
                                 modifier = Modifier
                                     .size(150.dp)
                                     .clip(RoundedCornerShape(12.dp))
@@ -145,7 +146,7 @@ fun UpdateProductScreen(navController: NavController, productId: String?) {
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Product Name") },
+                        label = { Text("Item Name") },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -153,7 +154,7 @@ fun UpdateProductScreen(navController: NavController, productId: String?) {
                     // FIX: Instead of .align(Alignment.Start), wrap it in a Box or Row
                     // OR just use fillMaxWidth() to allow the text to sit at the start by default
                     Text(
-                        text = "Custom Attributes",
+                        text = "Further details",
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.fillMaxWidth(), // This fills the width
                         textAlign = androidx.compose.ui.text.style.TextAlign.Start // This forces start alignment
