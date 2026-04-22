@@ -12,12 +12,14 @@ class InventoryViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance()
 
+
     // State for the list of products
     var products = mutableStateListOf<ProductModel>()
 
     // State for display settings (0 = Show All)
     // We use mutableIntStateOf so the UI recomposes when this changes
-    var maxFieldsToShow by mutableIntStateOf(0)
+
+    var maxFieldsToShow by mutableIntStateOf(2) // Default to 2 fields
 
     var isLoading by mutableStateOf(true)
 

@@ -49,7 +49,9 @@ fun UpdateProductScreen(
     var productName by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Uncategorized") }
     var imageUrl by remember { mutableStateOf("") }
-    val existingCategories = remember { mutableStateListOf("Uncategorized", "Cars", "Electronics", "Furniture") }
+
+    // State for Confirmation Dialog
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     // Launcher for updating the image
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -67,7 +69,6 @@ fun UpdateProductScreen(
                 category = it.category
                 imageUrl = it.imageUrl
 
-                // Clear and reload the ViewModel's custom fields from the Map
                 viewModel.customFields.clear()
                 it.customFields.forEach { (k, v) ->
                     viewModel.customFields.add(CustomField(k, v))
@@ -81,155 +82,178 @@ fun UpdateProductScreen(
     Scaffold(
         topBar = { TopAppBar(title = { Text("Edit Product") }) }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // 1. Image Section
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(160.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { galleryLauncher.launch("image/*") },
-                        contentAlignment = Alignment.Center
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 1. Image Section
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Display newly selected image OR existing image
-                        val displayUri = viewModel.selectedImageUri ?: if (imageUrl.isNotEmpty()) Uri.parse(imageUrl) else null
-
-                        if (displayUri != null) {
-                            AsyncImage(
-                                model = displayUri,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Add, contentDescription = null)
-                                Text("Change Photo", style = MaterialTheme.typography.labelSmall)
+                        Box(
+                            modifier = Modifier
+                                .size(160.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { galleryLauncher.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val displayUri = viewModel.selectedImageUri ?: if (imageUrl.isNotEmpty()) Uri.parse(imageUrl) else null
+                            if (displayUri != null) {
+                                AsyncImage(
+                                    model = displayUri,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.Add, contentDescription = null)
+                                    Text("Change Photo", style = MaterialTheme.typography.labelSmall)
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // 2. Name Input
-            item {
-                OutlinedTextField(
-                    value = productName,
-                    onValueChange = { productName = it },
-                    label = { Text("Product Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
+                // 2. Name Input
+                item {
+                    OutlinedTextField(
+                        value = productName,
+                        onValueChange = { productName = it },
+                        label = { Text("Product Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
 
-            // 3. Category Selector
-            item {
-                CategorySelector(
-                    currentCategory = category,
-                    onCategorySelected = { category = it },
-                    existingCategories = existingCategories
-                )
-            }
+                // 3. Category Selector
+                item {
+                    // Reusing the component from AddProductScreen
+                    CategorySelector(
+                        currentCategory = category,
+                        onCategorySelected = { category = it },
+                        // Static list for now; in next step we can pull dynamically from VM
+                        existingCategories = listOf("Uncategorized", "Cars", "Electronics", "Furniture")
+                    )
+                }
 
-            // 4. Custom Fields Header
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Custom Details", style = MaterialTheme.typography.titleMedium)
-                    TextButton(onClick = { viewModel.addNewField() }) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Text("Add Field")
+                // 4. Custom Fields Header
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Custom Details", style = MaterialTheme.typography.titleMedium)
+                        TextButton(onClick = { viewModel.addNewField() }) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Text("Add Field")
+                        }
                     }
                 }
-            }
 
-            // 5. Dynamic List
-            itemsIndexed(viewModel.customFields) { index, field ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = field.key,
-                        onValueChange = { viewModel.customFields[index] = field.copy(key = it) },
-                        label = { Text("Label") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = field.value,
-                        onValueChange = { viewModel.customFields[index] = field.copy(value = it) },
-                        label = { Text("Value") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = { viewModel.removeField(index) }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color.Red)
+                // 5. Dynamic List
+                itemsIndexed(viewModel.customFields) { index, field ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = field.key,
+                            onValueChange = { viewModel.customFields[index] = field.copy(key = it) },
+                            label = { Text("Label") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = field.value,
+                            onValueChange = { viewModel.customFields[index] = field.copy(value = it) },
+                            label = { Text("Value") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { viewModel.removeField(index) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color.Red)
+                        }
                     }
                 }
-            }
 
-            // 6. Update Button
-            item {
-                Button(
-                    onClick = {
-                        if (productName.isNotBlank()) {
-                            val fieldsMap = viewModel.customFields.associate { it.key to it.value }
+                // 6. Update Button
+                item {
+                    Button(
+                        onClick = {
+                            if (productName.isNotBlank()) {
+                                val fieldsMap = viewModel.customFields.associate { it.key to it.value }
+                                val finalImageUrl = viewModel.selectedImageUri?.toString() ?: imageUrl
 
-                            // If user picked a new image, use that. Otherwise, keep the old one.
-                            val finalImageUrl = viewModel.selectedImageUri?.toString() ?: imageUrl
+                                val updatedProduct = ProductModel(
+                                    id = productId ?: "",
+                                    name = productName,
+                                    imageUrl = finalImageUrl,
+                                    // .trim() prevents duplicate categories caused by accidental spaces
+                                    category = category.trim().ifBlank { "Uncategorized" },
+                                    customFields = fieldsMap
+                                )
 
-                            val updatedProduct = ProductModel(
-                                id = productId ?: "",
-                                name = productName,
-                                imageUrl = finalImageUrl,
-                                category = category,
-                                customFields = fieldsMap
-                            )
-
-                            database.setValue(updatedProduct).addOnSuccessListener {
-                                Toast.makeText(context, "Updated successfully!", Toast.LENGTH_SHORT).show()
-                                navController.popBackStack()
+                                database.setValue(updatedProduct).addOnSuccessListener {
+                                    Toast.makeText(context, "Updated successfully!", Toast.LENGTH_SHORT).show()
+                                    navController.popBackStack()
+                                }
                             }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) {
-                    Text("Save Changes")
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    ) {
+                        Text("Save Changes")
+                    }
+                }
+
+                // 7. Delete Section
+                item {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    OutlinedButton(
+                        onClick = { showDeleteConfirmation = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                        border = BorderStroke(1.dp, Color.Red)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Delete Permanently")
+                    }
                 }
             }
 
-            // 7. Delete Section
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                OutlinedButton(
-                    onClick = {
-                        database.removeValue().addOnSuccessListener {
-                            Toast.makeText(context, "Item deleted", Toast.LENGTH_SHORT).show()
-                            navController.popBackStack()
+            // --- DELETE CONFIRMATION DIALOG ---
+            if (showDeleteConfirmation) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteConfirmation = false },
+                    title = { Text("Delete Product") },
+                    text = { Text("Are you sure you want to permanently delete '$productName'? This action cannot be undone.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteConfirmation = false
+                                database.removeValue().addOnSuccessListener {
+                                    Toast.makeText(context, "Item deleted", Toast.LENGTH_SHORT).show()
+                                    navController.popBackStack()
+                                }
+                            }
+                        ) {
+                            Text("Delete", color = Color.Red)
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                    border = BorderStroke(1.dp, Color.Red)
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Delete Permanently")
-                }
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteConfirmation = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
         }
     }

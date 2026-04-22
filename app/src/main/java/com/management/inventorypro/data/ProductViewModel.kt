@@ -15,6 +15,9 @@ import kotlin.to
 class ProductViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance()
+    // Inside your ViewModel
+    private val _products = mutableStateListOf<ProductModel>()
+    val products: List<ProductModel> = _products
 
     var selectedImageUri by mutableStateOf<Uri?>(null)
     var isUploading by mutableStateOf(false)

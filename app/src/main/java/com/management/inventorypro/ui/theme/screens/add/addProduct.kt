@@ -41,8 +41,20 @@ fun AddProductScreen(
     var productName by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Uncategorized") }
     val context = LocalContext.current
+    // 1. Get the live list of products from the ViewModel
+    val allProducts = viewModel.products
 
-    val existingCategories = remember { mutableStateListOf("Uncategorized", "Cars", "Electronics", "Furniture") }
+    // 2. Extract unique categories from those products
+    val existingCategories = remember(allProducts) {
+        allProducts.map { it.category }
+            .distinct()
+            .filter { it.isNotBlank() }
+            .sorted()
+            .ifEmpty { listOf("Uncategorized", "Cars", "Electronics") }
+    }
+
+
+
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -169,7 +181,7 @@ fun AddProductScreen(
                                 id = id,
                                 name = productName,
                                 imageUrl = viewModel.selectedImageUri?.toString() ?: "",
-                                category = category.ifBlank { "Uncategorized" },
+                                category = category.trim().ifBlank { "Uncategorized" },
                                 customFields = fieldsMap
                             )
 
