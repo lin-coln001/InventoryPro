@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,11 +50,8 @@ fun UpdateProductScreen(
     var productName by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Uncategorized") }
     var imageUrl by remember { mutableStateOf("") }
-
-    // State for Confirmation Dialog
     var showDeleteConfirmation by remember { mutableStateOf(false) }
 
-    // Launcher for updating the image
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -80,13 +78,68 @@ fun UpdateProductScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Edit Product") }) }
+        topBar = { TopAppBar(title = { Text("Edit Product") }) },
+        // --- FIXED BOTTOM NAVIGATION BAR ---
+        bottomBar = {
+            BottomAppBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Delete Button (Smaller, Outlined)
+                    OutlinedButton(
+                        onClick = { showDeleteConfirmation = true },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                        border = BorderStroke(1.dp, Color.Red)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Delete")
+                    }
+
+                    // Save Button (Primary, Fills more space)
+                    Button(
+                        onClick = {
+                            if (productName.isNotBlank()) {
+                                val fieldsMap = viewModel.customFields.associate { it.key to it.value }
+                                val finalImageUrl = viewModel.selectedImageUri?.toString() ?: imageUrl
+
+                                val updatedProduct = ProductModel(
+                                    id = productId ?: "",
+                                    name = productName,
+                                    imageUrl = finalImageUrl,
+                                    category = category.trim().ifBlank { "Uncategorized" },
+                                    customFields = fieldsMap
+                                )
+
+                                database.setValue(updatedProduct).addOnSuccessListener {
+                                    Toast.makeText(context, "Updated successfully!", Toast.LENGTH_SHORT).show()
+                                    navController.popBackStack()
+                                }
+                            } else {
+                                Toast.makeText(context, "Name cannot be empty", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.weight(1.5f)
+                    ) {
+                        Icon(Icons.Default.Done, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Save Changes")
+                    }
+                }
+            }
+        }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -98,7 +151,7 @@ fun UpdateProductScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(160.dp)
+                                .size(140.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable { galleryLauncher.launch("image/*") },
@@ -135,11 +188,9 @@ fun UpdateProductScreen(
 
                 // 3. Category Selector
                 item {
-                    // Reusing the component from AddProductScreen
                     CategorySelector(
                         currentCategory = category,
                         onCategorySelected = { category = it },
-                        // Static list for now; in next step we can pull dynamically from VM
                         existingCategories = listOf("Uncategorized", "Cars", "Electronics", "Furniture")
                     )
                 }
@@ -159,7 +210,7 @@ fun UpdateProductScreen(
                     }
                 }
 
-                // 5. Dynamic List
+                // 5. Dynamic List (Custom Fields)
                 itemsIndexed(viewModel.customFields) { index, field ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -184,49 +235,8 @@ fun UpdateProductScreen(
                     }
                 }
 
-                // 6. Update Button
-                item {
-                    Button(
-                        onClick = {
-                            if (productName.isNotBlank()) {
-                                val fieldsMap = viewModel.customFields.associate { it.key to it.value }
-                                val finalImageUrl = viewModel.selectedImageUri?.toString() ?: imageUrl
-
-                                val updatedProduct = ProductModel(
-                                    id = productId ?: "",
-                                    name = productName,
-                                    imageUrl = finalImageUrl,
-                                    // .trim() prevents duplicate categories caused by accidental spaces
-                                    category = category.trim().ifBlank { "Uncategorized" },
-                                    customFields = fieldsMap
-                                )
-
-                                database.setValue(updatedProduct).addOnSuccessListener {
-                                    Toast.makeText(context, "Updated successfully!", Toast.LENGTH_SHORT).show()
-                                    navController.popBackStack()
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                    ) {
-                        Text("Save Changes")
-                    }
-                }
-
-                // 7. Delete Section
-                item {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    OutlinedButton(
-                        onClick = { showDeleteConfirmation = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                        border = BorderStroke(1.dp, Color.Red)
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Delete Permanently")
-                    }
-                }
+                // Extra spacer so the last field isn't hidden behind the BottomAppBar
+                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
 
             // --- DELETE CONFIRMATION DIALOG ---
