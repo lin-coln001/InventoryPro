@@ -52,6 +52,7 @@ fun AddProductScreen(
     var category by remember { mutableStateOf("Uncategorized") }
     val context = LocalContext.current
     val allProducts by viewModel.products.collectAsState()
+    var isUploading by remember { mutableStateOf(false) }
 
     val dynamicCategories = remember(allProducts) {
         allProducts.map { it.category }
@@ -168,28 +169,45 @@ fun AddProductScreen(
                     Button(
                         onClick = {
                             if (productName.isNotBlank()) {
-                                val id = System.currentTimeMillis().toString()
-                                val fieldsMap = viewModel.customFields.associate { it.key to it.value }
-                                val newProduct = ProductModel(
-                                    id = id, name = productName,
-                                    imageUrl = viewModel.selectedImageUri?.toString() ?: "",
-                                    category = category.trim().ifBlank { "Uncategorized" },
-                                    customFields = fieldsMap
-                                )
-                                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                                FirebaseDatabase.getInstance().getReference("users")
-                                    .child(userId).child("inventory").child(id)
-                                    .setValue(newProduct).addOnSuccessListener {
-                                        Toast.makeText(context, "Entry Saved", Toast.LENGTH_SHORT).show()
-                                        navController.popBackStack()
+                                val currentUri = viewModel.selectedImageUri
+
+                                if (currentUri != null && currentUri.toString().startsWith("content://")) {
+                                    // SITUATION A: We have a new local image that NEEDS uploading
+                                    viewModel.uploadToCloudinary(currentUri) { webUrl ->
+                                        // WE ONLY SAVE ONCE CLOUDINARY GIVES US THE HTTPS URL
+                                        viewModel.saveProductToFirebase(
+                                            name = productName,
+                                            category = category,
+                                            imageUrl = webUrl, // Use the 'webUrl' from Cloudinary!
+                                            onComplete = {
+                                                navController.popBackStack()
+                                            }
+                                        )
                                     }
+                                } else {
+                                    // SITUATION B: No image selected OR it's already an https link
+                                    val existingUrl = currentUri?.toString() ?: ""
+                                    viewModel.saveProductToFirebase(
+                                        name = productName,
+                                        category = category,
+                                        imageUrl = existingUrl,
+                                        onComplete = {
+                                            navController.popBackStack()
+                                        }
+                                    )
+                                }
                             }
                         },
+                        enabled = !viewModel.isUploading,
                         modifier = Modifier.fillMaxWidth().height(56.dp).padding(bottom = 24.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = NeonCyan, contentColor = DeepMidnight),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("INITIATE SAVE", fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                        if (viewModel.isUploading) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DeepMidnight)
+                        } else {
+                            Text("INITIALIZE ENTRY", fontWeight = FontWeight.ExtraBold)
+                        }
                     }
                 }
             }

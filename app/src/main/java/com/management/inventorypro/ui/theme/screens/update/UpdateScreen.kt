@@ -52,6 +52,7 @@ fun UpdateProductScreen(
     viewModel: ProductViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val allProducts by viewModel.products.collectAsState()
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val database = FirebaseDatabase.getInstance().getReference("users")
         .child(userId).child("inventory").child(productId ?: "")
@@ -60,6 +61,14 @@ fun UpdateProductScreen(
     var category by remember { mutableStateOf("Uncategorized") }
     var imageUrl by remember { mutableStateOf("") }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    val dynamicCategories = remember(allProducts) {
+        allProducts.map { it.category }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+            .ifEmpty { listOf("Uncategorized") }
+    }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -180,7 +189,7 @@ fun UpdateProductScreen(
                 CategorySelector(
                     currentCategory = category,
                     onCategorySelected = { category = it },
-                    existingCategories = listOf("Uncategorized", "Cars", "Electronics", "Furniture")
+                    existingCategories = dynamicCategories
                 )
             }
 

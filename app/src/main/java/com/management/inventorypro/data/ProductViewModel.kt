@@ -1,16 +1,14 @@
 package com.management.inventorypro.data
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import com.cloudinary.android.MediaManager
 import com.cloudinary.android.callback.ErrorInfo
 import com.cloudinary.android.callback.UploadCallback
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.*
 import com.management.inventorypro.models.CustomField
 import com.management.inventorypro.models.ProductModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +19,6 @@ class ProductViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance()
 
-    // --- 1. STATE FLOW FOR PRODUCTS (Fixed Duplicates) ---
     private val _products = MutableStateFlow<List<ProductModel>>(emptyList())
     val products: StateFlow<List<ProductModel>> = _products.asStateFlow()
 
@@ -36,7 +33,6 @@ class ProductViewModel : ViewModel() {
 
     private fun getUserId(): String? = auth.currentUser?.uid
 
-    // --- 2. DATA FETCHING ---
     private fun fetchProducts() {
         val userId = getUserId() ?: return
         val inventoryRef = database.getReference("users").child(userId).child("inventory")
@@ -49,11 +45,12 @@ class ProductViewModel : ViewModel() {
                 }
                 _products.value = list
             }
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Firebase", "Fetch cancelled: ${error.message}")
+            }
         })
     }
 
-    // --- 3. FIELD MANAGEMENT ---
     fun addNewField() {
         customFields.add(CustomField("", ""))
     }
@@ -64,33 +61,46 @@ class ProductViewModel : ViewModel() {
         }
     }
 
-    // --- 4. UPLOAD & SAVE LOGIC ---
-    fun uploadProduct(productName: String, category: String, onComplete: () -> Unit) {
-        val uid = getUserId() ?: return
-        val uri = selectedImageUri ?: return
-
+    /**
+     * CLOUDINARY UPLOAD LOGIC
+     * This takes a URI and returns the secure HTTPS URL.
+     */
+    fun uploadToCloudinary(uri: Uri, onComplete: (String) -> Unit) {
         isUploading = true
 
         MediaManager.get().upload(uri)
-            .unsigned("image_folder")
+            .unsigned("InventoryPro") // Ensure this matches your Cloudinary Upload Preset!
             .callback(object : UploadCallback {
-                override fun onStart(requestId: String?) { }
-                override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) { }
+                override fun onStart(requestId: String?) {}
+                override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
 
                 override fun onSuccess(requestId: String?, resultData: Map<*, *>?) {
-                    val imageUrl = resultData?.get("secure_url").toString()
-                    saveToFirebase(uid, productName, category, imageUrl, onComplete)
+                    // Make sure you are grabbing "secure_url"
+                    val permanentUrl = resultData?.get("secure_url")?.toString() ?: ""
+                    Log.d("CloudinarySuccess", "URL: $permanentUrl") // Add this to see it in Logcat!
+                    onComplete(permanentUrl)
                 }
 
                 override fun onError(requestId: String?, error: ErrorInfo?) {
-                    isUploading = false
+                    Log.e("Cloudinary", "Upload failed: ${error?.description}")
+                    isUploading = false // Reset loading on error
                 }
 
-                override fun onReschedule(requestId: String?, error: ErrorInfo?) { }
+                override fun onReschedule(requestId: String?, error: ErrorInfo?) {}
             }).dispatch()
     }
 
-    private fun saveToFirebase(uid: String, name: String, category: String, imageUrl: String, onComplete: () -> Unit) {
+    /**
+     * FIREBASE SAVE LOGIC
+     * Call this inside the onComplete block of uploadToCloudinary
+     */
+    fun saveProductToFirebase(
+        name: String,
+        category: String,
+        imageUrl: String,
+        onComplete: () -> Unit
+    ) {
+        val uid = getUserId() ?: return
         val userInventoryRef = database.getReference("users").child(uid).child("inventory").push()
         val productId = userInventoryRef.key ?: ""
         val fieldsMap = customFields.associate { it.key to it.value }
@@ -105,16 +115,9 @@ class ProductViewModel : ViewModel() {
 
         userInventoryRef.setValue(product).addOnCompleteListener {
             isUploading = false
+            selectedImageUri = null // Clear image for next entry
+            customFields.clear()    // Clear fields for next entry
             onComplete()
         }
-    }
-
-    fun fetchProductById(productId: String, onResult: (ProductModel) -> Unit) {
-        val uid = getUserId() ?: return
-        database.getReference("users").child(uid).child("inventory").child(productId)
-            .get().addOnSuccessListener { snapshot ->
-                val product = snapshot.getValue(ProductModel::class.java)
-                product?.let { onResult(it) }
-            }
     }
 }
