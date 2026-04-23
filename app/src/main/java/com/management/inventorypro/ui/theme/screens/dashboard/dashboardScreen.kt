@@ -1,166 +1,148 @@
 package com.management.inventorypro.ui.theme.screens.dashboard
 
 import android.os.Build.VERSION.SDK_INT
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
 import com.management.inventorypro.R
 import com.management.inventorypro.data.AuthViewModel
-import com.management.inventorypro.ui.theme.screens.dashboard.DashboardScreen
+
+// --- CUSTOM NEON COLORS ---
+val DeepMidnight = Color(0xFF0A0E1A)   // Background
+val SurfaceNavy = Color(0xFF161C2C)    // Card Surface
+val NeonCyan = Color(0xFF00E5FF)       // Primary Glow
+val SoftCyan = Color(0xFFB2EBF2)       // Text Secondary
+val DangerRed = Color(0xFFFF5252)      // Logout/Delete
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(navController: NavHostController) {
-    val selectedItem = remember { mutableStateOf(0) }
     val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val imageLoader = ImageLoader.Builder(context)
-        .components {
-            if (SDK_INT >= 28) {
-                add(ImageDecoderDecoder.Factory())
-            } else {
-                add(GifDecoder.Factory())
-            }
-        }
-        .build()
-
-    // States for dynamic data
     var username by remember { mutableStateOf("User") }
     var itemCount by remember { mutableStateOf(0) }
 
-    // Fetch data when the screen loads
-// Inside DashboardScreen.kt
+    val imageLoader = ImageLoader.Builder(context)
+        .components {
+            if (SDK_INT >= 28) add(ImageDecoderDecoder.Factory()) else add(GifDecoder.Factory())
+        }.build()
+
     LaunchedEffect(Unit) {
-        // 1. Get Username
-        authViewModel.getUsername {
-            username = it
-        }
-
-
-        // 2. Get Current User UID for the correct path
-        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-        val uid = currentUser?.uid
-
+        authViewModel.getUsername { username = it }
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
         if (uid != null) {
-            // POINT TO THE USER'S SPECIFIC FOLDER
-            val database = FirebaseDatabase.getInstance()
-                .getReference("users")
-                .child(uid)
-                .child("inventory")
-
+            val database = FirebaseDatabase.getInstance().getReference("users").child(uid).child("inventory")
             database.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    // Now it counts only the items belonging to THIS user
                     itemCount = snapshot.childrenCount.toInt()
                 }
-
-                override fun onCancelled(error: DatabaseError) {
-                    // Handle error
-                }
+                override fun onCancelled(error: DatabaseError) {}
             })
         }
     }
 
     Scaffold(
+        containerColor = DeepMidnight, // Ensures the background is deep navy
         topBar = {
             TopAppBar(
-                title = { Text(text = "InventoryPro") },
+                title = {
+                    Text("InventoryPro", fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Blue,
-                    titleContentColor = Color.White
+                    containerColor = DeepMidnight,
+                    titleContentColor = NeonCyan
                 ),
                 actions = {
-                    Button(
+                    TextButton(
                         onClick = { authViewModel.logout(navController, context) },
-                        colors = ButtonDefaults.buttonColors(Color.Red)
+                        colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
                     ) {
-                        Text(text = "Logout")
+                        Text("LOGOUT", fontWeight = FontWeight.Bold)
                     }
                 }
             )
         },
         bottomBar = {
-            NavigationBar(containerColor = Color.Blue) {
-                NavigationBarItem(
-                    selected = selectedItem.value == 0,
-                    onClick = { selectedItem.value = 0 },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-                    label = { Text(text = "Home") }
+            NavigationBar(
+                containerColor = SurfaceNavy,
+                tonalElevation = 0.dp
+            ) {
+                // Define your destinations clearly
+                val navItems = listOf(
+                    // CHANGE "home" TO "dashboard"
+                    Triple("dashboard", Icons.Filled.Home, "Home"),
+                    Triple("settings", Icons.Filled.Settings, "Settings"),
+                    Triple("tips", Icons.Filled.Lightbulb, "Tips"),
+                    Triple("profile", Icons.Filled.Person, "Profile")
                 )
-                NavigationBarItem(
-                    selected = selectedItem.value == 1,
-                    onClick = { navController.navigate("settings") },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
-                    label = { Text(text = "Settings") }
-                )
-                NavigationBarItem(
-                    selected = selectedItem.value == 2,
-                    onClick = {navController.navigate("tips") },
-                    icon = { Icon(Icons.Filled.Lightbulb, contentDescription = "Tips") },
-                    label = { Text(text = "Tips") }
-                )
-                NavigationBarItem(
-                    selected = currentRoute == "profile",
-                    onClick = { navController.navigate("profile") },
-                    icon = { Icon(Icons.Filled.Person, contentDescription = "profile") },
-                    label = { Text(text = "Profile") }
-                )
+
+                navItems.forEach { (route, icon, label) ->
+                    // This is the key: compare currentRoute with the target route
+                    val isSelected = currentRoute == route
+
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick = {
+                            // CRASH PREVENTER: Only navigate if we aren't already there
+                            if (!isSelected) {
+                                navController.navigate(route) {
+                                    // This pops up to the start destination to avoid
+                                    // building up a massive stack of screens
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = label,
+                                // Make the icon "glow" more when selected
+                                tint = if (isSelected) NeonCyan else SoftCyan.copy(alpha = 0.5f)
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = label,
+                                color = if (isSelected) NeonCyan else SoftCyan.copy(alpha = 0.5f)
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            // The "pill" behind the icon
+                            indicatorColor = NeonCyan.copy(alpha = 0.15f)
+                        )
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -168,135 +150,106 @@ fun DashboardScreen(navController: NavHostController) {
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
+                .background(DeepMidnight)
                 .padding(16.dp)
         ) {
+            // Welcome Header
             Text(
-                text = "Welcome back $username",
-                fontSize = 25.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
+                text = "Welcome back, $username",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
-            AsyncImage(
-                model = R.drawable.welcome_back, // Your GIF name
-                imageLoader = imageLoader,     // Use the loader we just made
-                contentDescription = "Dashboard Animation",
-                modifier = Modifier
-                    .size(140.dp)
-                    .clip(RectangleShape),
-//                .border(2.dp, Color.White, CircleShape),
-                contentScale = ContentScale.Crop
+
+            Text(
+                text = "Your system is live.",
+                fontSize = 14.sp,
+                color = NeonCyan.copy(alpha = 0.7f),
+                modifier = Modifier.padding(bottom = 20.dp)
             )
 
             // Dynamic Stats Row
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // THE LIVE INVENTORY CARD
-                Card(
-                    modifier = Modifier.size(110.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.Blue),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "$itemCount", color = Color.White, fontSize = 28.sp)
-                        Text(text = "Items", color = Color.White, fontSize = 16.sp)
-                    }
-                }
-
-                // Placeholder Card 2 (e.g., Active Alerts)
-                Card(
-                    modifier = Modifier.size(110.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.Blue),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "0", color = Color.White, fontSize = 28.sp)
-                        Text(text = "categories", color = Color.White, fontSize = 16.sp)
-                    }
-                }
+                StatCard(value = "$itemCount", label = "Items", modifier = Modifier.weight(1f))
+                StatCard(value = "Live", label = "Status", modifier = Modifier.weight(1f))
             }
+
+            Text(
+                text = "Quick Actions",
+                style = MaterialTheme.typography.labelLarge,
+                color = SoftCyan.copy(0.6f),
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
 
             // Action: Add New Item
-            Card(
-                onClick = { navController.navigate("add_product") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1)),
-                elevation = CardDefaults.cardElevation(6.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Inventory,
-                        contentDescription = "Add Item",
-                        tint = Color(0xFF004040),
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = "Add New Item",
-                            fontSize = 18.sp,
-                            color = Color.Black
-                        )
-                        Text(text = "Register a new product", fontSize = 14.sp, color = Color.Gray)
-                    }
-                }
-            }
+            ActionCard(
+                title = "Add New Item",
+                subtitle = "Register product to database",
+                icon = Icons.Filled.Inventory,
+                onClick = { navController.navigate("add_product") }
+            )
 
             // Action: View Inventory
-            Card(
-                onClick = {navController.navigate("view_inventory") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1)),
-                elevation = CardDefaults.cardElevation(6.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Person,
-                        contentDescription = "View List",
-                        tint = Color(0xFF004040),
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = "View Inventory",
-                            fontSize = 18.sp,
-                            color = Color.Black
-                        )
-                        Text(text = "Check stock levels", fontSize = 14.sp, color = Color.Gray)
-                    }
-                }
-            }
+            ActionCard(
+                title = "View Inventory",
+                subtitle = "Check current stock levels",
+                icon = Icons.Filled.List,
+                onClick = { navController.navigate("view_inventory") }
+            )
         }
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun DashboardScreenPreview() {
-        DashboardScreen( rememberNavController())
+fun StatCard(value: String, label: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.height(100.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
+        border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.2f)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = value, color = NeonCyan, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(text = label, color = SoftCyan.copy(0.7f), fontSize = 12.sp)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ActionCard(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = NeonCyan,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(text = subtitle, fontSize = 12.sp, color = SoftCyan.copy(0.6f))
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.ArrowForwardIos, contentDescription = null, tint = SoftCyan.copy(0.3f), modifier = Modifier.size(16.dp))
+        }
+    }
 }

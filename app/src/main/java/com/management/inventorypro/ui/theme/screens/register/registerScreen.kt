@@ -1,174 +1,174 @@
 package com.management.inventorypro.ui.theme.screens.register
 
 import android.os.Build.VERSION.SDK_INT
-import com.management.inventorypro.R
-
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import coil.Coil.imageLoader
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
+import com.management.inventorypro.R
 import com.management.inventorypro.data.AuthViewModel
-import com.management.inventorypro.ui.theme.screens.register.RegisterScreen
 
+// Final Consistency Palette
+val DeepMidnight = Color(0xFF0A0E1A)
+val SurfaceNavy = Color(0xFF161C2C)
+val NeonCyan = Color(0xFF00E5FF)
+val SoftCyan = Color(0xFFB2EBF2)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegisterScreen(navController: NavController){
+fun RegisterScreen(navController: NavController) {
     var username by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var password by remember {mutableStateOf("")}
-    var confirmpassword by remember { mutableStateOf("")}
+    var password by remember { mutableStateOf("") }
+    var confirmpassword by remember { mutableStateOf("") }
 
-    var authViewModel: AuthViewModel = viewModel( )
-
+    val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
+
+    val scrollState = rememberScrollState()
+
     val imageLoader = ImageLoader.Builder(context)
         .components {
-            if (SDK_INT >= 28) {
-                add(ImageDecoderDecoder.Factory())
-            } else {
-                add(GifDecoder.Factory())
-            }
-        }
-        .build()
-    Column(
-        modifier= Modifier.fillMaxSize(),
+            if (SDK_INT >= 28) add(ImageDecoderDecoder.Factory())
+            else add(GifDecoder.Factory())
+        }.build()
 
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .background(DeepMidnight),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center) {
+        verticalArrangement = Arrangement.Center
+    ) {
+        // --- WELCOME ANIMATION ---
         AsyncImage(
-            model = R.drawable.welcome_aboard, // Your GIF name
-            imageLoader = imageLoader,     // Use the loader we just made
+            model = R.drawable.welcome_aboard,
+            imageLoader = imageLoader,
             contentDescription = "Register Animation",
             modifier = Modifier
-                .size(140.dp)
-                .clip(RectangleShape),
-//                .border(2.dp, Color.White, CircleShape),
-            contentScale = ContentScale.Crop
-        )
-        Text(text="Register Here",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Red
-        )
-        OutlinedTextField(
-            value = username,
-            onValueChange = {username = it},
-            label={Text(text="enter username")},
-            placeholder = {Text(text="Please enter your username")},
-            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-
-            )
-        OutlinedTextField(
-            value = phone,
-            onValueChange = {phone = it},
-            label = {Text(text = "enter phone number")},
-            placeholder = {Text(text="please enter your phone number")},
-            leadingIcon = {Icon(Icons.Default.Phone, contentDescription = null)}
+                .size(120.dp)
+                .clip(RoundedCornerShape(16.dp)),
+            contentScale = ContentScale.Fit
         )
 
-        OutlinedTextField(
-            value = email,
-            onValueChange = {email = it},
-            label = {Text(text = "enter email")},
-            placeholder = {Text(text="please enter your email")},
-            leadingIcon = {Icon(Icons.Default.Email, contentDescription = null)}
-        )
-        OutlinedTextField(
-            value = password,
-            onValueChange = {password = it},
-            label = {Text(text = "enter your password")},
-            visualTransformation = PasswordVisualTransformation(),
-            placeholder = {Text(text="please enter your password")},
-            leadingIcon = {Icon(Icons.Default.Lock, contentDescription = null)}
-        )
-        OutlinedTextField(
-            value = confirmpassword,
-            onValueChange = {confirmpassword = it},
-            label = {Text(text = "confirm your password")},
-            placeholder = {Text(text="please confirm your password")},
-            visualTransformation = PasswordVisualTransformation(),
+        Spacer(modifier = Modifier.height(16.dp))
 
-            leadingIcon = {Icon(Icons.Default.Check,contentDescription = null)}
+        Text(
+            text = "NEW PROTOCOL",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = NeonCyan,
+            letterSpacing = 4.sp
         )
-        Button(onClick = {authViewModel.signup(
-            username=username,
-            phone=phone,
-            email=email,
-            password=password,
-            confirmpassword=confirmpassword,
-            navController=navController,
-            context=context)}) {Text(text = "register") }
+        Text(
+            text = "Create your System Identity",
+            fontSize = 12.sp,
+            color = SoftCyan.copy(alpha = 0.5f)
+        )
 
-        Spacer(modifier = Modifier.size(24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
+        // --- REGISTRATION FIELDS ---
+        RegisterCyberField(username, { username = it }, "Username", Icons.Default.Person)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        RegisterCyberField(phone, { phone = it }, "Comms Number", Icons.Default.Phone)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        RegisterCyberField(email, { email = it }, "Email Address", Icons.Default.Email)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        RegisterCyberField(password, { password = it }, "Secure Key", Icons.Default.Lock, true)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        RegisterCyberField(confirmpassword, { confirmpassword = it }, "Confirm Key", Icons.Default.Check, true)
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // --- REGISTER BUTTON ---
+        Button(
+            onClick = {
+                authViewModel.signup(
+                    username, phone, email, password, confirmpassword, navController, context
+                )
+            },
+            modifier = Modifier
+                .width(280.dp)
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = NeonCyan, contentColor = DeepMidnight),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("INITIALIZE ACCOUNT", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // --- FOOTER ---
         Row {
-            Text(text = "already have an account?", color = Color.Red)
+            Text(text = "Existing User? ", color = Color.White.copy(0.6f))
             Text(
-                text = "Login here",
-                color = Color.Blue,
+                text = "Back to Login",
+                color = NeonCyan,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable { navController.navigate("login") }
             )
         }
 
-        Spacer(modifier = Modifier.size(12.dp))
-
-        Text(
-            text = "forgot password?",
-            color = Color.Gray,
-            fontSize = 12.sp,
-            modifier = Modifier.clickable { navController.navigate("dashboard") }
-        )
-
+        // Final spacer to ensure nothing is cut off by the edge of the screen
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
-@Preview(showBackground= true, showSystemUi = true)
+
 @Composable
-fun RegisterScreenPreview(){
-    RegisterScreen(rememberNavController())
+fun RegisterCyberField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isPassword: Boolean = false
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label, color = SoftCyan.copy(0.4f), fontSize = 12.sp) },
+        modifier = Modifier.width(280.dp),
+        leadingIcon = { Icon(icon, contentDescription = null, tint = NeonCyan.copy(0.6f), modifier = Modifier.size(20.dp)) },
+        visualTransformation = if (isPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = NeonCyan,
+            unfocusedBorderColor = Color.White.copy(0.05f),
+            focusedContainerColor = SurfaceNavy,
+            unfocusedContainerColor = SurfaceNavy,
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            cursorColor = NeonCyan
+        ),
+        shape = RoundedCornerShape(12.dp)
+    )
 }

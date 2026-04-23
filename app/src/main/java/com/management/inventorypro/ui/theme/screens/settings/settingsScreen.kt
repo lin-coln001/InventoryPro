@@ -1,68 +1,46 @@
 package com.management.inventorypro.ui.theme.screens.settings
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+
+// Consistency Palette
+val DeepMidnight = Color(0xFF0A0E1A)
+val SurfaceNavy = Color(0xFF161C2C)
+val NeonCyan = Color(0xFF00E5FF)
+val SoftCyan = Color(0xFFB2EBF2)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController) {
-    val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
-    val database = com.google.firebase.database.FirebaseDatabase.getInstance()
-    val uid = auth.currentUser?.uid
+    val uid = FirebaseAuth.getInstance().currentUser?.uid
+    val database = FirebaseDatabase.getInstance()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val selectedItem = remember { mutableStateOf(0) }
 
-    // States
     var showAll by remember { mutableStateOf(true) }
     var fieldCountText by remember { mutableStateOf("2") }
     var isSaving by remember { mutableStateOf(false) }
 
-    // Fetch current setting on load
     LaunchedEffect(uid) {
         if (uid != null) {
             database.getReference("users").child(uid).child("settings").child("maxVisibleFields")
@@ -79,120 +57,148 @@ fun SettingsScreen(navController: NavController) {
     }
 
     Scaffold(
+        containerColor = DeepMidnight,
         topBar = {
             TopAppBar(
-                title = { Text(text = "Settings") },
+                title = { Text("System Configuration", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Blue,
-                    titleContentColor = Color.White
-                ),
-                actions = {
-                    Button(
-                        onClick = { navController.navigate("dashboard") },
-                        colors = ButtonDefaults.buttonColors(Color.Red)
-                    ) {
-                        Text(text = "Home")
-                    }
-                }
+                    containerColor = DeepMidnight,
+                    titleContentColor = NeonCyan
+                )
             )
         },
         bottomBar = {
-            NavigationBar(containerColor = Color.Blue) {
-                NavigationBarItem(
-                    selected = currentRoute == "dashboard",
-                    onClick = { navController.navigate("dashboard") },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = "dashboard") },
-                    label = { Text(text = "Home") }
+            NavigationBar(
+                containerColor = SurfaceNavy,
+                tonalElevation = 0.dp
+            ) {
+                val navItems = listOf(
+                    Triple("dashboard", Icons.Filled.Home, "Home"),
+                    Triple("settings", Icons.Filled.Settings, "Settings"),
+                    Triple("tips", Icons.Filled.Lightbulb, "Tips"),
+                    Triple("profile", Icons.Filled.Person, "Profile")
                 )
-                // settings
-                NavigationBarItem(
-                    selected = currentRoute == "settings",
-                    onClick = {
-                        navController.navigate("settings") {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
-                    label = { Text(text = "Settings") }
-                )
-                // tips
-                NavigationBarItem(
 
-                    selected = currentRoute == "tips",
-                    onClick = {
-                        navController.navigate("tips") {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    icon = { Icon(Icons.Filled.Lightbulb, contentDescription = "Tips") },
-                    label = { Text(text = "Tips") }
-                )
-                // profile
-
-                NavigationBarItem(
-                    selected = selectedItem.value == 3,
-                    onClick = { selectedItem.value = 3 },
-                    icon = { Icon(Icons.Filled.Person, contentDescription = "Person") },
-                    label = { Text(text = "Person") }
-                )
+                navItems.forEach { (route, icon, label) ->
+                    val isSelected = currentRoute == route
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick = {
+                            if (!isSelected) {
+                                navController.navigate(route) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        },
+                        icon = { Icon(icon, contentDescription = label) },
+                        label = { Text(label) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = NeonCyan,
+                            selectedTextColor = NeonCyan,
+                            unselectedIconColor = SoftCyan.copy(0.5f),
+                            unselectedTextColor = SoftCyan.copy(0.5f),
+                            indicatorColor = NeonCyan.copy(0.1f)
+                        )
+                    )
+                }
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .background(DeepMidnight)
+                .padding(24.dp)
+        ) {
+            Text(
+                text = "Display Preferences",
+                color = SoftCyan.copy(0.6f),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
-            // Toggle for Unlimited
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            // Toggle Card
+            Surface(
+                color = SurfaceNavy,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Show All Custom Fields", modifier = Modifier.weight(1f))
-                Switch(checked = showAll, onCheckedChange = { showAll = it })
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Limitless View", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Show all custom fields in list", color = SoftCyan.copy(0.5f), fontSize = 12.sp)
+                    }
+                    Switch(
+                        checked = showAll,
+                        onCheckedChange = { showAll = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = NeonCyan,
+                            checkedTrackColor = NeonCyan.copy(0.3f),
+                            uncheckedThumbColor = SoftCyan.copy(0.5f),
+                            uncheckedTrackColor = SurfaceNavy
+                        )
+                    )
+                }
             }
 
-            // Input for Specific Number (only enabled if showAll is false)
+            // Specific Number Input
             if (!showAll) {
+                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = fieldCountText,
                     onValueChange = { if (it.all { char -> char.isDigit() }) fieldCountText = it },
-                    label = { Text("Number of fields to display") },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    label = { Text("Visible Field Limit") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = Color.White.copy(0.1f),
+                        focusedContainerColor = SurfaceNavy,
+                        unfocusedContainerColor = SurfaceNavy,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    )
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
             Button(
                 onClick = {
                     if (uid != null) {
                         isSaving = true
-                        // If showAll is true, we save 0 to represent "Unlimited"
                         val finalValue = if (showAll) 0 else fieldCountText.toIntOrNull() ?: 2
-
                         database.getReference("users").child(uid).child("settings")
                             .child("maxVisibleFields").setValue(finalValue)
                             .addOnSuccessListener {
                                 isSaving = false
                                 navController.popBackStack()
                             }
-                            .addOnFailureListener { isSaving = false }
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NeonCyan,
+                    contentColor = DeepMidnight
+                ),
+                shape = RoundedCornerShape(12.dp),
                 enabled = !isSaving
             ) {
-                if (isSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                else Text("Apply Preferences")
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DeepMidnight)
+                } else {
+                    Text("SAVE CHANGES", fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                }
             }
         }
     }
-}
-@Preview
-@Composable
-fun SettingsScreenPreview() {
-        SettingsScreen(rememberNavController())
 }

@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,7 +24,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -33,6 +36,13 @@ import com.management.inventorypro.data.ProductViewModel
 import com.management.inventorypro.models.CustomField
 import com.management.inventorypro.models.ProductModel
 import com.management.inventorypro.ui.theme.screens.add.CategorySelector
+
+// Reusing your defined palette
+val DeepMidnight = Color(0xFF0A0E1A)
+val SurfaceNavy = Color(0xFF161C2C)
+val NeonCyan = Color(0xFF00E5FF)
+val SoftCyan = Color(0xFFB2EBF2)
+val DangerRed = Color(0xFFFF5252)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +56,6 @@ fun UpdateProductScreen(
     val database = FirebaseDatabase.getInstance().getReference("users")
         .child(userId).child("inventory").child(productId ?: "")
 
-    // --- State Variables ---
     var productName by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Uncategorized") }
     var imageUrl by remember { mutableStateOf("") }
@@ -54,11 +63,8 @@ fun UpdateProductScreen(
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        viewModel.selectedImageUri = uri
-    }
+    ) { uri: Uri? -> viewModel.selectedImageUri = uri }
 
-    // --- LOAD EXISTING DATA ---
     LaunchedEffect(Unit) {
         database.get().addOnSuccessListener { snapshot ->
             val product = snapshot.getValue(ProductModel::class.java)
@@ -66,24 +72,30 @@ fun UpdateProductScreen(
                 productName = it.name
                 category = it.category
                 imageUrl = it.imageUrl
-
                 viewModel.customFields.clear()
                 it.customFields.forEach { (k, v) ->
                     viewModel.customFields.add(CustomField(k, v))
                 }
             }
-        }.addOnFailureListener {
-            Toast.makeText(context, "Failed to load product", Toast.LENGTH_SHORT).show()
         }
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Edit Product") }) },
-        // --- FIXED BOTTOM NAVIGATION BAR ---
+        containerColor = DeepMidnight,
+        topBar = {
+            TopAppBar(
+                title = { Text("Update Entry", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = DeepMidnight,
+                    titleContentColor = NeonCyan
+                )
+            )
+        },
         bottomBar = {
             BottomAppBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp,
+                containerColor = SurfaceNavy,
+                tonalElevation = 0.dp,
+                modifier = Modifier.height(80.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Row(
@@ -91,25 +103,23 @@ fun UpdateProductScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Delete Button (Smaller, Outlined)
                     OutlinedButton(
                         onClick = { showDeleteConfirmation = true },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                        border = BorderStroke(1.dp, Color.Red)
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
+                        border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Delete")
                     }
 
-                    // Save Button (Primary, Fills more space)
                     Button(
                         onClick = {
                             if (productName.isNotBlank()) {
                                 val fieldsMap = viewModel.customFields.associate { it.key to it.value }
                                 val finalImageUrl = viewModel.selectedImageUri?.toString() ?: imageUrl
-
                                 val updatedProduct = ProductModel(
                                     id = productId ?: "",
                                     name = productName,
@@ -117,154 +127,134 @@ fun UpdateProductScreen(
                                     category = category.trim().ifBlank { "Uncategorized" },
                                     customFields = fieldsMap
                                 )
-
                                 database.setValue(updatedProduct).addOnSuccessListener {
-                                    Toast.makeText(context, "Updated successfully!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "System Updated", Toast.LENGTH_SHORT).show()
                                     navController.popBackStack()
                                 }
-                            } else {
-                                Toast.makeText(context, "Name cannot be empty", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        modifier = Modifier.weight(1.5f)
+                        modifier = Modifier.weight(1.5f).height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan, contentColor = DeepMidnight),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.Done, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Save Changes")
+                        Text("Save Changes", fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // 1. Image Section
-                item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Image Section
+            item {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(140.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(SurfaceNavy)
+                            .border(BorderStroke(1.dp, NeonCyan.copy(0.2f)), RoundedCornerShape(20.dp))
+                            .clickable { galleryLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(140.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .clickable { galleryLauncher.launch("image/*") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val displayUri = viewModel.selectedImageUri ?: if (imageUrl.isNotEmpty()) Uri.parse(imageUrl) else null
-                            if (displayUri != null) {
-                                AsyncImage(
-                                    model = displayUri,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.Add, contentDescription = null)
-                                    Text("Change Photo", style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
+                        val displayUri = viewModel.selectedImageUri ?: if (imageUrl.isNotEmpty()) Uri.parse(imageUrl) else null
+                        if (displayUri != null) {
+                            AsyncImage(model = displayUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        } else {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = NeonCyan)
                         }
                     }
                 }
-
-                // 2. Name Input
-                item {
-                    OutlinedTextField(
-                        value = productName,
-                        onValueChange = { productName = it },
-                        label = { Text("Product Name") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                }
-
-                // 3. Category Selector
-                item {
-                    CategorySelector(
-                        currentCategory = category,
-                        onCategorySelected = { category = it },
-                        existingCategories = listOf("Uncategorized", "Cars", "Electronics", "Furniture")
-                    )
-                }
-
-                // 4. Custom Fields Header
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = "Custom Details", style = MaterialTheme.typography.titleMedium)
-                        TextButton(onClick = { viewModel.addNewField() }) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Text("Add Field")
-                        }
-                    }
-                }
-
-                // 5. Dynamic List (Custom Fields)
-                itemsIndexed(viewModel.customFields) { index, field ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = field.key,
-                            onValueChange = { viewModel.customFields[index] = field.copy(key = it) },
-                            label = { Text("Label") },
-                            modifier = Modifier.weight(1f)
-                        )
-                        OutlinedTextField(
-                            value = field.value,
-                            onValueChange = { viewModel.customFields[index] = field.copy(value = it) },
-                            label = { Text("Value") },
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { viewModel.removeField(index) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color.Red)
-                        }
-                    }
-                }
-
-                // Extra spacer so the last field isn't hidden behind the BottomAppBar
-                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
 
-            // --- DELETE CONFIRMATION DIALOG ---
-            if (showDeleteConfirmation) {
-                AlertDialog(
-                    onDismissRequest = { showDeleteConfirmation = false },
-                    title = { Text("Delete Product") },
-                    text = { Text("Are you sure you want to permanently delete '$productName'? This action cannot be undone.") },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showDeleteConfirmation = false
-                                database.removeValue().addOnSuccessListener {
-                                    Toast.makeText(context, "Item deleted", Toast.LENGTH_SHORT).show()
-                                    navController.popBackStack()
-                                }
-                            }
-                        ) {
-                            Text("Delete", color = Color.Red)
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDeleteConfirmation = false }) {
-                            Text("Cancel")
-                        }
-                    }
+            item {
+                UpdateCyberTextField(value = productName, onValueChange = { productName = it }, label = "Product Name")
+            }
+
+            item {
+                // Assuming CategorySelector was already styled in the previous step
+                CategorySelector(
+                    currentCategory = category,
+                    onCategorySelected = { category = it },
+                    existingCategories = listOf("Uncategorized", "Cars", "Electronics", "Furniture")
                 )
             }
+
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "Advanced Metadata", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    TextButton(onClick = { viewModel.addNewField() }, colors = ButtonDefaults.textButtonColors(contentColor = NeonCyan)) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("Add Field")
+                    }
+                }
+            }
+
+            itemsIndexed(viewModel.customFields) { index, field ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    UpdateCyberTextField(
+                        value = field.key,
+                        onValueChange = { viewModel.customFields[index] = field.copy(key = it) },
+                        label = "Label",
+                        modifier = Modifier.weight(1f)
+                    )
+                    UpdateCyberTextField(
+                        value = field.value,
+                        onValueChange = { viewModel.customFields[index] = field.copy(value = it) },
+                        label = "Value",
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { viewModel.removeField(index) }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Remove", tint = DangerRed.copy(0.6f))
+                    }
+                }
+            }
+            item { Spacer(modifier = Modifier.height(20.dp)) }
+        }
+
+        if (showDeleteConfirmation) {
+            AlertDialog(
+                containerColor = SurfaceNavy,
+                titleContentColor = NeonCyan,
+                textContentColor = Color.White,
+                onDismissRequest = { showDeleteConfirmation = false },
+                title = { Text("Delete Entry") },
+                text = { Text("Permanently remove '$productName' from the database?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        database.removeValue().addOnSuccessListener {
+                            navController.popBackStack()
+                        }
+                    }) { Text("Confirm", color = DangerRed) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmation = false }) { Text("Cancel", color = SoftCyan) }
+                }
+            )
         }
     }
+}
+
+@Composable
+fun UpdateCyberTextField(value: String, onValueChange: (String) -> Unit, label: String, modifier: Modifier = Modifier) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label, color = SoftCyan.copy(0.5f)) },
+        modifier = modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = NeonCyan,
+            unfocusedBorderColor = Color.White.copy(0.1f),
+            focusedContainerColor = SurfaceNavy,
+            unfocusedContainerColor = SurfaceNavy,
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            cursorColor = NeonCyan
+        ),
+        shape = RoundedCornerShape(12.dp)
+    )
 }
