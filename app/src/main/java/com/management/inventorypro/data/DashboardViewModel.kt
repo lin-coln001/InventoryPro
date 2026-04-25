@@ -1,42 +1,99 @@
 package com.management.inventorypro.data
 
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class DashboardViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance()
 
-    // State variables for the Dashboard UI
+    // UI States - Initialized with "Loading" values to prevent layout jumps
     var totalItems by mutableIntStateOf(0)
+    var userName by mutableStateOf("...")
     var isLoading by mutableStateOf(true)
 
     init {
-        fetchDashboardData()
+        loadDashboard()
     }
 
-    private fun fetchDashboardData() {
+    fun loadDashboard() {
         val uid = auth.currentUser?.uid
         if (uid == null) {
             isLoading = false
             return
         }
 
-        // CRITICAL: Pointing to the new user-specific path
-        val userInventoryRef = database.getReference("users").child(uid).child("inventory")
+        isLoading = true
 
-        userInventoryRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                // snapshot.childrenCount gives you the number of items in the inventory
-                totalItems = snapshot.childrenCount.toInt()
-                isLoading = false
-            }
+        // Use a Coroutine to fire off both requests in parallel
+        viewModelScope.launch(Dispatchers.IO) {
+            fetchUsername(uid)
+            fetchTotalItemCount(uid)
+        }
+    }
 
-            override fun onCancelled(error: DatabaseError) {
-                isLoading = false
+    private fun fetchUsername(uid: String) {
+        val primaryPath = database.getReference("User").child(uid).child("username")
+        val secondaryPath = database.getReference("users").child(uid).child("profile/username")
+
+        // Try the primary path first (User/uid/username)
+        primaryPath.get().addOnSuccessListener { snapshot ->
+            val name = snapshot.getValue(String::class.java)
+
+            if (name != null) {
+                updateUsernameUI(name)
+            } else {
+                // If primary is empty, try the secondary path as a backup
+                secondaryPath.get().addOnSuccessListener { secondSnap ->
+                    val backupName = secondSnap.getValue(String::class.java) ?: "Inventory User"
+                    updateUsernameUI(backupName)
+                }
             }
-        })
+        }.addOnFailureListener {
+            // If the whole request fails, try the secondary path
+            secondaryPath.get().addOnSuccessListener { secondSnap ->
+                val backupName = secondSnap.getValue(String::class.java) ?: "Inventory User"
+                updateUsernameUI(backupName)
+            }
+        }
+    }
+
+    private fun updateUsernameUI(name: String) {
+        viewModelScope.launch(Dispatchers.Main) {
+            userName = name
+            checkLoadingStatus()
+        }
+    }
+
+    private fun fetchTotalItemCount(uid: String) {
+        val inventoryRef = database.getReference("users").child(uid).child("inventory")
+
+        // .get() is faster for initial dashboard load than a constant listener
+        inventoryRef.get().addOnSuccessListener { snapshot ->
+            // snapshot.childrenCount is a metadata fetch (very light on RAM)
+            val total = snapshot.childrenCount.toInt()
+
+            viewModelScope.launch(Dispatchers.Main) {
+                totalItems = total
+                checkLoadingStatus()
+            }
+        }.addOnFailureListener {
+            Log.e("Dashboard", "Failed to get count", it)
+            viewModelScope.launch(Dispatchers.Main) { isLoading = false }
+        }
+    }
+
+    private fun checkLoadingStatus() {
+        // If we have data (or at least finished the name fetch), stop showing the spinner
+        if (userName != "...") {
+            isLoading = false
+        }
     }
 }

@@ -22,12 +22,16 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.management.inventorypro.ui.theme.DeepMidnight
+import com.management.inventorypro.ui.theme.NeonCyan
+import com.management.inventorypro.ui.theme.SoftCyan
+import com.management.inventorypro.ui.theme.SurfaceNavy
 
 // Consistency Palette
-val DeepMidnight = Color(0xFF0A0E1A)
-val SurfaceNavy = Color(0xFF161C2C)
-val NeonCyan = Color(0xFF00E5FF)
-val SoftCyan = Color(0xFFB2EBF2)
+//val DeepMidnight = Color(0xFF0A0E1A)
+//val SurfaceNavy = Color(0xFF161C2C)
+//val NeonCyan = Color(0xFF00E5FF)
+//val SoftCyan = Color(0xFFB2EBF2)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -194,7 +198,7 @@ fun SettingsScreen(navController: NavController) {
                 enabled = !isSaving
             ) {
                 if (isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DeepMidnight)
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = NeonCyan)
                 } else {
                     Text("SAVE CHANGES", fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                 }

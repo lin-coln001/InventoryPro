@@ -20,12 +20,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.management.inventorypro.ui.theme.DeepMidnight
+import com.management.inventorypro.ui.theme.NeonCyan
+import com.management.inventorypro.ui.theme.SoftCyan
+import com.management.inventorypro.ui.theme.SurfaceNavy
 
 // Consistency Palette
-val DeepMidnight = Color(0xFF0A0E1A)
-val SurfaceNavy = Color(0xFF161C2C)
-val NeonCyan = Color(0xFF00E5FF)
-val SoftCyan = Color(0xFFB2EBF2)
+//val DeepMidnight = Color(0xFF0A0E1A)
+//val SurfaceNavy = Color(0xFF161C2C)
+//val NeonCyan = Color(0xFF00E5FF)
+//val SoftCyan = Color(0xFFB2EBF2)
 
 data class InventoryTip(
     val title: String,

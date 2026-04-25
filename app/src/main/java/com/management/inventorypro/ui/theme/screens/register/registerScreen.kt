@@ -30,12 +30,16 @@ import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import com.management.inventorypro.R
 import com.management.inventorypro.data.AuthViewModel
+import com.management.inventorypro.ui.theme.DeepMidnight
+import com.management.inventorypro.ui.theme.NeonCyan
+import com.management.inventorypro.ui.theme.SoftCyan
+import com.management.inventorypro.ui.theme.SurfaceNavy
 
 // Final Consistency Palette
-val DeepMidnight = Color(0xFF0A0E1A)
-val SurfaceNavy = Color(0xFF161C2C)
-val NeonCyan = Color(0xFF00E5FF)
-val SoftCyan = Color(0xFFB2EBF2)
+//val DeepMidnight = Color(0xFF0A0E1A)
+//val SurfaceNavy = Color(0xFF161C2C)
+//val NeonCyan = Color(0xFF00E5FF)
+//val SoftCyan = Color(0xFFB2EBF2)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,27 +70,27 @@ fun RegisterScreen(navController: NavController) {
         verticalArrangement = Arrangement.Center
     ) {
         // --- WELCOME ANIMATION ---
-        AsyncImage(
-            model = R.drawable.welcome_aboard,
-            imageLoader = imageLoader,
-            contentDescription = "Register Animation",
-            modifier = Modifier
-                .size(120.dp)
-                .clip(RoundedCornerShape(16.dp)),
-            contentScale = ContentScale.Fit
-        )
+//        AsyncImage(
+//            model = R.drawable.welcome_aboard,
+//            imageLoader = imageLoader,
+//            contentDescription = "Register Animation",
+//            modifier = Modifier
+//                .size(120.dp)
+//                .clip(RoundedCornerShape(16.dp)),
+//            contentScale = ContentScale.Fit
+//        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "NEW PROTOCOL",
+            text = "REGISTER HERE",
             fontSize = 28.sp,
             fontWeight = FontWeight.ExtraBold,
             color = NeonCyan,
             letterSpacing = 4.sp
         )
         Text(
-            text = "Create your System Identity",
+            text = "Create your inventory management account",
             fontSize = 12.sp,
             color = SoftCyan.copy(alpha = 0.5f)
         )
@@ -97,16 +101,16 @@ fun RegisterScreen(navController: NavController) {
         RegisterCyberField(username, { username = it }, "Username", Icons.Default.Person)
         Spacer(modifier = Modifier.height(8.dp))
 
-        RegisterCyberField(phone, { phone = it }, "Comms Number", Icons.Default.Phone)
+        RegisterCyberField(phone, { phone = it }, "Phone Number", Icons.Default.Phone)
         Spacer(modifier = Modifier.height(8.dp))
 
         RegisterCyberField(email, { email = it }, "Email Address", Icons.Default.Email)
         Spacer(modifier = Modifier.height(8.dp))
 
-        RegisterCyberField(password, { password = it }, "Secure Key", Icons.Default.Lock, true)
+        RegisterCyberField(password, { password = it }, "Password", Icons.Default.Lock, true)
         Spacer(modifier = Modifier.height(8.dp))
 
-        RegisterCyberField(confirmpassword, { confirmpassword = it }, "Confirm Key", Icons.Default.Check, true)
+        RegisterCyberField(confirmpassword, { confirmpassword = it }, "Confirm password", Icons.Default.Check, true)
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -123,7 +127,7 @@ fun RegisterScreen(navController: NavController) {
             colors = ButtonDefaults.buttonColors(containerColor = NeonCyan, contentColor = DeepMidnight),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("INITIALIZE ACCOUNT", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            Text("CREATE ACCOUNT", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -132,7 +136,7 @@ fun RegisterScreen(navController: NavController) {
         Row {
             Text(text = "Existing User? ", color = Color.White.copy(0.6f))
             Text(
-                text = "Back to Login",
+                text = " Login",
                 color = NeonCyan,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable { navController.navigate("login") }

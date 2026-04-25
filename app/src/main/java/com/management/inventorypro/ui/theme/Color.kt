@@ -23,4 +23,7 @@ val BorderBlue = Color(0xFF1E294B)    // For outlines and dividers
 // The "Neon" Accents
 val NeonCyan = Color(0xFF00E5FF)      // Glowing Cyan for buttons/primary
 val ElectricViolet = Color(0xFF7000FF) // For secondary accents/gradients
-val NeonText = Color(0xFFE3F2FD)      // Soft bluish-white for readability// Main Text
+val NeonText = Color(0xFFE3F2FD)         // Soft bluish-white for readability// Main Text
+val DangerRed = Color(0xFFFF5252)
+val SurfaceNavy = Color(0xFF161C2C)
+val SoftCyan = Color(0xFFB2EBF2)

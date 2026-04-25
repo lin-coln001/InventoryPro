@@ -24,22 +24,32 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.management.inventorypro.data.ProductViewModel
+import com.management.inventorypro.ui.theme.DangerRed
+import com.management.inventorypro.ui.theme.DeepMidnight
+import com.management.inventorypro.ui.theme.NeonCyan
+import com.management.inventorypro.ui.theme.SoftCyan
+import com.management.inventorypro.ui.theme.SurfaceNavy
 
 // Consistency Palette
-val DeepMidnight = Color(0xFF0A0E1A)
-val SurfaceNavy = Color(0xFF161C2C)
-val NeonCyan = Color(0xFF00E5FF)
-val SoftCyan = Color(0xFFB2EBF2)
-val DangerRed = Color(0xFFFF5252)
+//val DeepMidnight = Color(0xFF0A0E1A)
+//val SurfaceNavy = Color(0xFF161C2C)
+//val NeonCyan = Color(0xFF00E5FF)
+//val SoftCyan = Color(0xFFB2EBF2)
+//val DangerRed = Color(0xFFFF5252)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(navController: NavController) {
+fun ProfileScreen(
+    navController: NavController,
+    viewModel: ProductViewModel = viewModel()
+) {
     val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
@@ -58,7 +68,9 @@ fun ProfileScreen(navController: NavController) {
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> uri?.let { imageUrl = it.toString() } }
+    ) { uri: Uri? ->
+        uri?.let { imageUrl = it.toString() }
+    }
 
     LaunchedEffect(Unit) {
         database.get().addOnSuccessListener { snapshot ->
@@ -75,32 +87,45 @@ fun ProfileScreen(navController: NavController) {
         containerColor = DeepMidnight,
         topBar = {
             TopAppBar(
-                title = { Text("Agent Profile", fontWeight = FontWeight.Bold) },
+                title = { Text("Your Profile", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = DeepMidnight,
                     titleContentColor = NeonCyan
                 ),
+                // ... inside ProfileScreen TopAppBar actions ...
                 actions = {
-                    IconButton(onClick = {
-                        if (isEditing) {
-                            val updates = mapOf(
-                                "username" to username,
-                                "phone" to phoneNumber,
-                                "profileImageUrl" to imageUrl
-                            )
-                            database.updateChildren(updates).addOnSuccessListener {
-                                Toast.makeText(context, "System Updated", Toast.LENGTH_SHORT).show()
-                                isEditing = false
-                            }
-                        } else {
-                            isEditing = true
-                        }
-                    }) {
-                        Icon(
-                            imageVector = if (isEditing) Icons.Default.Save else Icons.Default.Edit,
-                            contentDescription = null,
-                            tint = if (isEditing) NeonCyan else SoftCyan.copy(0.7f)
+                    if (viewModel.isUploading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(40.dp),
+                            color = NeonCyan, // The brightest color in your palette
+                            trackColor = NeonCyan.copy(alpha = 0.1f), // Adds a faint path behind the spinner
+                            strokeWidth = 3.dp
                         )
+                    } else {
+                        IconButton(onClick = {
+                            if (isEditing) {
+                                if (imageUrl.startsWith("content://")) {
+                                    // Use the specific profile upload function
+                                    viewModel.uploadProfilePicture(Uri.parse(imageUrl)) { webUrl ->
+                                        saveProfileData(database, username, phoneNumber, webUrl) {
+                                            isEditing = false
+                                        }
+                                    }
+                                } else {
+                                    saveProfileData(database, username, phoneNumber, imageUrl) {
+                                        isEditing = false
+                                    }
+                                }
+                            } else {
+                                isEditing = true
+                            }
+                        }) {
+                            Icon(
+                                imageVector = if (isEditing) Icons.Default.Save else Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = if (isEditing) NeonCyan else SoftCyan.copy(0.7f)
+                            )
+                        }
                     }
                 }
             )
@@ -152,45 +177,61 @@ fun ProfileScreen(navController: NavController) {
             ) {
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // --- PROFILE AVATAR WITH GLOW ---
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .border(BorderStroke(2.dp, if (isEditing) NeonCyan else Color.White.copy(0.1f)), CircleShape)
-                        .padding(4.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceNavy)
-                        .clickable(enabled = isEditing) { launcher.launch("image/*") },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imageUrl.isNotEmpty()) {
-                        AsyncImage(
-                            model = imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(60.dp), tint = SoftCyan.copy(0.3f))
+                // --- PROFILE AVATAR WITH REMOVE OPTION ---
+                Box(contentAlignment = Alignment.TopEnd) {
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .border(BorderStroke(2.dp, if (isEditing) NeonCyan else Color.White.copy(0.1f)), CircleShape)
+                            .padding(4.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceNavy)
+                            .clickable(enabled = isEditing) { launcher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (imageUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(60.dp), tint = SoftCyan.copy(0.3f))
+                        }
+
+                        if (isEditing) {
+                            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.4f)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = NeonCyan)
+                            }
+                        }
                     }
-                    if (isEditing) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.4f)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = NeonCyan)
+
+                    // Remove Image Button
+                    if (isEditing && imageUrl.isNotEmpty()) {
+                        IconButton(
+                            onClick = { imageUrl = "" },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(DangerRed, CircleShape)
+                                .border(2.dp, DeepMidnight, CircleShape)
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = if (username.isEmpty()) "Unknown Agent" else username, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(text = if (username.isEmpty()) "No Username Set" else username, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Text(text = email, fontSize = 14.sp, color = NeonCyan.copy(0.7f), letterSpacing = 1.sp)
 
                 Spacer(modifier = Modifier.height(40.dp))
 
                 // --- SYSTEM INPUTS ---
-                ProfileCyberField(value = username, onValueChange = { username = it }, label = "Identifier", enabled = isEditing, icon = Icons.Default.Badge)
+                ProfileCyberField(value = username, onValueChange = { username = it }, label = "Username", enabled = isEditing, icon = Icons.Default.Badge)
                 Spacer(modifier = Modifier.height(16.dp))
-                ProfileCyberField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Comms Line", enabled = isEditing, icon = Icons.Default.Call)
+                ProfileCyberField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone Number", enabled = isEditing, icon = Icons.Default.Call)
 
                 Spacer(modifier = Modifier.weight(1f))
 
@@ -207,11 +248,29 @@ fun ProfileScreen(navController: NavController) {
                 ) {
                     Icon(Icons.Default.Logout, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("TERMINATE SESSION", fontWeight = FontWeight.Bold)
+                    Text("Logout", fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+}
+
+// Helper Function to keep the screen code clean
+fun saveProfileData(
+    database: com.google.firebase.database.DatabaseReference,
+    name: String,
+    phone: String,
+    url: String,
+    onSuccess: () -> Unit
+) {
+    val updates = mapOf(
+        "username" to name,
+        "phone" to phone,
+        "profileImageUrl" to url
+    )
+    database.updateChildren(updates).addOnSuccessListener {
+        onSuccess()
     }
 }
 

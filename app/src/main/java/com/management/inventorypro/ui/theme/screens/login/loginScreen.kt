@@ -28,12 +28,16 @@ import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import com.management.inventorypro.R
 import com.management.inventorypro.data.AuthViewModel
+import com.management.inventorypro.ui.theme.DeepMidnight
+import com.management.inventorypro.ui.theme.NeonCyan
+import com.management.inventorypro.ui.theme.SoftCyan
+import com.management.inventorypro.ui.theme.SurfaceNavy
 
 // Consistency Palette
-val DeepMidnight = Color(0xFF0A0E1A)
-val SurfaceNavy = Color(0xFF161C2C)
-val NeonCyan = Color(0xFF00E5FF)
-val SoftCyan = Color(0xFFB2EBF2)
+//val DeepMidnight = Color(0xFF0A0E1A)
+//val SurfaceNavy = Color(0xFF161C2C)
+//val NeonCyan = Color(0xFF00E5FF)
+//val SoftCyan = Color(0xFFB2EBF2)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,15 +64,15 @@ fun LoginScreen(navController: NavController) {
         verticalArrangement = Arrangement.Center
     ) {
         // --- LOGO / GIF SECTION ---
-        AsyncImage(
-            model = R.drawable.hello,
-            imageLoader = imageLoader,
-            contentDescription = "Login Animation",
-            modifier = Modifier
-                .size(160.dp)
-                .clip(RoundedCornerShape(20.dp)),
-            contentScale = ContentScale.Fit
-        )
+//        AsyncImage(
+//            model = R.drawable.hello,
+//            imageLoader = imageLoader,
+//            contentDescription = "Login Animation",
+//            modifier = Modifier
+//                .size(160.dp)
+//                .clip(RoundedCornerShape(20.dp)),
+//            contentScale = ContentScale.Fit
+//        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -101,7 +105,7 @@ fun LoginScreen(navController: NavController) {
         LoginCyberField(
             value = password,
             onValueChange = { password = it },
-            label = "Access Key",
+            label = "Password",
             icon = Icons.Default.Lock,
             isPassword = true
         )
@@ -156,7 +160,7 @@ fun LoginScreen(navController: NavController) {
         Row {
             Text(text = "New User? ", color = Color.White.copy(0.7f))
             Text(
-                text = "Register Protocol",
+                text = "Register ",
                 color = NeonCyan,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable { navController.navigate("register") }
@@ -166,7 +170,7 @@ fun LoginScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Reset Encryption?",
+            text = "Forgot password?",
             color = SoftCyan.copy(0.4f),
             fontSize = 12.sp,
             modifier = Modifier.clickable { /* Handle forgot password */ }

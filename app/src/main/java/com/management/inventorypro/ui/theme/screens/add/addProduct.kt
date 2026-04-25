@@ -1,7 +1,6 @@
 package com.management.inventorypro.ui.theme.screens.add
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -23,24 +22,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.management.inventorypro.data.ProductViewModel
-import com.management.inventorypro.models.ProductModel
+import com.management.inventorypro.ui.theme.DangerRed
+import com.management.inventorypro.ui.theme.DeepMidnight
+import com.management.inventorypro.ui.theme.NeonCyan
+import com.management.inventorypro.ui.theme.SoftCyan
+import com.management.inventorypro.ui.theme.SurfaceNavy
 
-// --- SHARED COLORS ---
-val DeepMidnight = Color(0xFF0A0E1A)
-val SurfaceNavy = Color(0xFF161C2C)
-val NeonCyan = Color(0xFF00E5FF)
-val SoftCyan = Color(0xFFB2EBF2)
-val DangerRed = Color(0xFFFF5252)
+
+// --- CONSISTENCY PALETTE ---
+//val DeepMidnight = Color(0xFF0A0E1A)
+//val SurfaceNavy = Color(0xFF161C2C)
+//val NeonCyan = Color(0xFF00E5FF)
+//val SoftCyan = Color(0xFFB2EBF2)
+//val DangerRed = Color(0xFFFF5252)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,9 +52,7 @@ fun AddProductScreen(
 ) {
     var productName by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Uncategorized") }
-    val context = LocalContext.current
     val allProducts by viewModel.products.collectAsState()
-    var isUploading by remember { mutableStateOf(false) }
 
     val dynamicCategories = remember(allProducts) {
         allProducts.map { it.category }
@@ -83,7 +83,7 @@ fun AddProductScreen(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Image Section
+                // --- IMAGE SELECTION SECTION ---
                 item {
                     Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
@@ -96,8 +96,12 @@ fun AddProductScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             if (viewModel.selectedImageUri != null) {
-                                AsyncImage(model = viewModel.selectedImageUri, contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                AsyncImage(
+                                    model = viewModel.selectedImageUri,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
                             } else {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(Icons.Default.Add, contentDescription = null, tint = NeonCyan)
@@ -108,7 +112,7 @@ fun AddProductScreen(
                     }
                 }
 
-                // Product Name
+                // --- PRODUCT NAME INPUT ---
                 item {
                     CyberTextField(
                         value = productName,
@@ -118,7 +122,7 @@ fun AddProductScreen(
                     )
                 }
 
-                // Category Selector
+                // --- CATEGORY DROPDOWN ---
                 item {
                     CategorySelector(
                         currentCategory = category,
@@ -127,7 +131,7 @@ fun AddProductScreen(
                     )
                 }
 
-                // Custom Details Header
+                // --- DYNAMIC CUSTOM FIELDS HEADER ---
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(text = "Custom Metadata", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -139,7 +143,7 @@ fun AddProductScreen(
                     }
                 }
 
-                // Dynamic Custom Fields
+                // --- CUSTOM FIELD LIST ---
                 itemsIndexed(viewModel.customFields) { index, field ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -164,36 +168,34 @@ fun AddProductScreen(
                     }
                 }
 
-                // Save Button
+                // --- ACTION BUTTON ---
                 item {
                     Button(
                         onClick = {
                             if (productName.isNotBlank()) {
                                 val currentUri = viewModel.selectedImageUri
+                                // Generate the Firebase ID
+                                val newProductId = FirebaseDatabase.getInstance().getReference("users").push().key ?: System.currentTimeMillis().toString()
 
-                                if (currentUri != null && currentUri.toString().startsWith("content://")) {
-                                    // SITUATION A: We have a new local image that NEEDS uploading
+                                if (currentUri != null) {
+                                    // SITUATION A: Upload image first, then save to Firebase
                                     viewModel.uploadToCloudinary(currentUri) { webUrl ->
-                                        // WE ONLY SAVE ONCE CLOUDINARY GIVES US THE HTTPS URL
                                         viewModel.saveProductToFirebase(
+                                            productId = newProductId,
                                             name = productName,
                                             category = category,
-                                            imageUrl = webUrl, // Use the 'webUrl' from Cloudinary!
-                                            onComplete = {
-                                                navController.popBackStack()
-                                            }
+                                            imageUrl = webUrl,
+                                            onComplete = { navController.popBackStack() }
                                         )
                                     }
                                 } else {
-                                    // SITUATION B: No image selected OR it's already an https link
-                                    val existingUrl = currentUri?.toString() ?: ""
+                                    // SITUATION B: No image selected, save to Firebase immediately
                                     viewModel.saveProductToFirebase(
+                                        productId = newProductId,
                                         name = productName,
                                         category = category,
-                                        imageUrl = existingUrl,
-                                        onComplete = {
-                                            navController.popBackStack()
-                                        }
+                                        imageUrl = "", // Empty string for no image
+                                        onComplete = { navController.popBackStack() }
                                     )
                                 }
                             }
@@ -204,9 +206,15 @@ fun AddProductScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         if (viewModel.isUploading) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DeepMidnight)
+                            // High-contrast spinner: Dark on Bright
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(40.dp),
+                                color = NeonCyan, // The brightest color in your palette
+                                trackColor = NeonCyan.copy(alpha = 0.1f), // Adds a faint path behind the spinner
+                                strokeWidth = 3.dp
+                            )
                         } else {
-                            Text("INITIALIZE ENTRY", fontWeight = FontWeight.ExtraBold)
+                            Text("ADD ITEM", fontWeight = FontWeight.ExtraBold)
                         }
                     }
                 }

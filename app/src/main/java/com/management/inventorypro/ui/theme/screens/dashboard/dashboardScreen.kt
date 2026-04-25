@@ -30,13 +30,19 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.management.inventorypro.R
 import com.management.inventorypro.data.AuthViewModel
+import com.management.inventorypro.ui.theme.DangerRed
+import com.management.inventorypro.ui.theme.DeepMidnight
+import com.management.inventorypro.ui.theme.NeonCyan
+import com.management.inventorypro.ui.theme.OffWhite
+import com.management.inventorypro.ui.theme.SoftCyan
+import com.management.inventorypro.ui.theme.SurfaceNavy
 
 // --- CUSTOM NEON COLORS ---
-val DeepMidnight = Color(0xFF0A0E1A)   // Background
-val SurfaceNavy = Color(0xFF161C2C)    // Card Surface
-val NeonCyan = Color(0xFF00E5FF)       // Primary Glow
-val SoftCyan = Color(0xFFB2EBF2)       // Text Secondary
-val DangerRed = Color(0xFFFF5252)      // Logout/Delete
+//val DeepMidnight = Color(0xFF0A0E1A)   // Background
+//val SurfaceNavy = Color(0xFF161C2C)    // Card Surface
+//val NeonCyan = Color(0xFF00E5FF)       // Primary Glow
+//val SoftCyan = Color(0xFFB2EBF2)       // Text Secondary
+//val DangerRed = Color(0xFFFF5252)      // Logout/Delete
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -153,22 +159,13 @@ fun DashboardScreen(navController: NavHostController) {
                 .background(DeepMidnight)
                 .padding(16.dp)
         ) {
-            // Welcome Header
+            // Welcome, Header
             Text(
-                text = "Welcome back, $username",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(bottom = 8.dp)
+                text = if (username == "...") "INITIALIZING..." else "Welcome back $username",
+                color = if (username == "...") SoftCyan.copy(0.3f) else OffWhite,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 24.sp
             )
-
-            Text(
-                text = "Your system is live.",
-                fontSize = 14.sp,
-                color = NeonCyan.copy(alpha = 0.7f),
-                modifier = Modifier.padding(bottom = 20.dp)
-            )
-
             // Dynamic Stats Row
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
