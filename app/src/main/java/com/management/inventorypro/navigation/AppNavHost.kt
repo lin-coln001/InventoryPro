@@ -79,9 +79,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         composable("tips") {
             TipsScreen(navController)
         }
-        composable("landing") {
-            OnboardingScreen(navController)
-        }
+//        composable("landing") {
+//            OnboardingScreen(navController)
+//        }
         composable("profile") {
              ProfileScreen(navController)
         }

@@ -6,16 +6,12 @@ plugins {
 
 android {
     namespace = "com.management.inventorypro"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 35 // Simplified and stable
 
     defaultConfig {
         applicationId = "com.management.inventorypro"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35 // Matches compileSdk
         versionCode = 1
         versionName = "1.0"
 
@@ -37,6 +33,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -64,4 +61,5 @@ dependencies {
     implementation("com.cloudinary:cloudinary-android:2.5.0")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("io.coil-kt:coil-gif:2.5.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }

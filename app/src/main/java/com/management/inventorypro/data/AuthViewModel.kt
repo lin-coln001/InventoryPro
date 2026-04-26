@@ -9,9 +9,6 @@ import com.google.firebase.database.FirebaseDatabase
 import com.management.inventorypro.models.UserModel
 
 
-
-
-
 class AuthViewModel: ViewModel( ) {
     private val auth: FirebaseAuth =FirebaseAuth.getInstance()
     private val mAuth: FirebaseAuth = FirebaseAuth.getInstance()

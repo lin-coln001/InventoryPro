@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.jvm.java
 
 class ProductViewModel(application: Application) : AndroidViewModel(application){
     private val auth = FirebaseAuth.getInstance()

@@ -1,55 +1,85 @@
 package com.management.inventorypro
 
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.cloudinary.android.MediaManager
-import com.management.inventorypro.Greeting
-
 import com.management.inventorypro.navigation.AppNavHost
 import com.management.inventorypro.ui.theme.InventoryProTheme
+import com.management.inventorypro.ui.theme.NeonCyan
+import com.management.inventorypro.ui.theme.SoftCyan
+import com.management.inventorypro.ui.theme.SurfaceNavy
+import com.management.inventorypro.util.UpdateManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize Cloudinary (Only do this once!)
-        val config = mapOf(
-            "cloud_name" to "djtr5luf6",
-            "secure" to true
-        )
+        // Initialize Cloudinary
+        val config = mapOf("cloud_name" to "djtr5luf6", "secure" to true)
         try {
             MediaManager.init(this, config)
         } catch (e: Exception) {
-            // Already initialized
+            // Initialization already handled
         }
-
 
         setContent {
-            // Your NavHost or Screen
-            AppNavHost( )
+            InventoryProTheme {
+                val context = LocalContext.current
+                val updateManager = remember { UpdateManager(context) }
+
+                // --- MANUAL VERSION TRACKING ---
+                // Change this number manually when you push a new APK to GitHub
+                val currentVersion = 1
+
+                var updateData by remember { mutableStateOf<Pair<Int, String>?>(null) }
+
+                // Check GitHub for updates
+                LaunchedEffect(Unit) {
+                    val jsonUrl = "https://raw.githubusercontent.com/lin-coln001/InventoryPro/main/update.json"
+                    val info = updateManager.checkForUpdates(jsonUrl)
+
+                    if (info != null && info.first > currentVersion) {
+                        updateData = info
+                    }
+                }
+
+                // Update Dialog
+                updateData?.let { data ->
+                    AlertDialog(
+                        containerColor = SurfaceNavy,
+                        titleContentColor = NeonCyan,
+                        textContentColor = Color.White,
+                        onDismissRequest = { updateData = null },
+                        title = { Text("Update Available", fontWeight = FontWeight.Bold) },
+                        text = { Text("A new version of InventoryPro is ready. Would you like to install it now?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                updateManager.downloadAndInstall(data.second)
+                                updateData = null
+                            }) {
+                                Text("UPDATE", color = NeonCyan, fontWeight = FontWeight.ExtraBold)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { updateData = null }) {
+                                Text("LATER", color = SoftCyan.copy(0.6f))
+                            }
+                        }
+                    )
+                }
+
+                // Main App UI
+                AppNavHost()
+            }
         }
-    }}
-
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun GreetingPreview() {
-    InventoryProTheme( ) {
-        Greeting("android")
     }
 }
