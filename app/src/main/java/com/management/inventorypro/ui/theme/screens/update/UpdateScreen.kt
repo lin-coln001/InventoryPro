@@ -50,7 +50,6 @@ import com.management.inventorypro.ui.theme.screens.add.CategorySelector
 //val NeonCyan = Color(0xFF00E5FF)
 //val SoftCyan = Color(0xFFB2EBF2)
 //val DangerRed = Color(0xFFFF5252)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateProductScreen(
@@ -64,17 +63,27 @@ fun UpdateProductScreen(
     val database = FirebaseDatabase.getInstance().getReference("users")
         .child(userId).child("inventory").child(productId ?: "")
 
+    // --- TWO-LEVEL STATE ---
     var productName by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Uncategorized") }
+    var mainCategory by remember { mutableStateOf("Uncategorized") }
+    var subCategory by remember { mutableStateOf("") }
     var imageUrl by remember { mutableStateOf("") }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
 
-    val dynamicCategories = remember(allProducts) {
-        allProducts.map { it.category }
+    // Dynamic categories for the main dropdown
+    val dynamicMainCategories = remember(allProducts) {
+        allProducts.map { it.category.split(" > ").first() }
             .filter { it.isNotBlank() }
-            .distinct()
-            .sorted()
+            .distinct().sorted()
             .ifEmpty { listOf("Uncategorized") }
+    }
+
+    // Contextual Sub-categories based on selection
+    val dynamicSubCategories = remember(mainCategory, allProducts) {
+        allProducts
+            .filter { it.category.startsWith("$mainCategory > ") }
+            .map { it.category.substringAfter(" > ") }
+            .distinct().sorted()
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -86,8 +95,17 @@ fun UpdateProductScreen(
             val product = snapshot.getValue(ProductModel::class.java)
             product?.let {
                 productName = it.name
-                category = it.category
                 imageUrl = it.imageUrl
+
+                // Split path into Main and Sub
+                if (it.category.contains(" > ")) {
+                    mainCategory = it.category.substringBefore(" > ")
+                    subCategory = it.category.substringAfter(" > ")
+                } else {
+                    mainCategory = it.category.ifEmpty { "Uncategorized" }
+                    subCategory = ""
+                }
+
                 viewModel.customFields.clear()
                 it.customFields.forEach { (k, v) ->
                     viewModel.customFields.add(CustomField(k, v))
@@ -110,7 +128,6 @@ fun UpdateProductScreen(
         bottomBar = {
             BottomAppBar(
                 containerColor = SurfaceNavy,
-                tonalElevation = 0.dp,
                 modifier = Modifier.height(80.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
@@ -128,41 +145,35 @@ fun UpdateProductScreen(
                         enabled = !viewModel.isUploading
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
                         Text("Delete")
                     }
 
                     Button(
                         onClick = {
                             if (productName.isNotBlank()) {
+                                // RE-JOIN path for saving
+                                val finalPath = if (subCategory.isNotBlank()) "$mainCategory > $subCategory" else mainCategory
                                 val currentUri = viewModel.selectedImageUri
 
-                                // STABLE LOGIC: Check if it's a NEW image (from gallery)
-                                if (currentUri != null && currentUri.toString().startsWith("content://")) {
-                                    viewModel.uploadToCloudinary(currentUri) { webUrl ->
-                                        viewModel.saveProductToFirebase(
-                                            productId = productId,
-                                            name = productName,
-                                            category = category,
-                                            imageUrl = webUrl,
-                                            onComplete = {
-                                                Toast.makeText(context, "Entry Updated", Toast.LENGTH_SHORT).show()
-                                                navController.popBackStack()
-                                            }
-                                        )
-                                    }
-                                } else {
-                                    // NO IMAGE CHANGE: Use existing imageUrl
+                                val saveAction = { finalImageUrl: String ->
                                     viewModel.saveProductToFirebase(
-                                        productId = productId,
+                                        productId = productId ?: "",
                                         name = productName,
-                                        category = category,
-                                        imageUrl = imageUrl,
+                                        category = finalPath,
+                                        imageUrl = finalImageUrl,
                                         onComplete = {
-                                            Toast.makeText(context, "Details Saved", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "Entry Updated", Toast.LENGTH_SHORT).show()
                                             navController.popBackStack()
                                         }
                                     )
+                                }
+
+                                if (currentUri != null && currentUri.toString().startsWith("content://")) {
+                                    viewModel.uploadToCloudinary(currentUri) { webUrl ->
+                                        saveAction(webUrl)
+                                    }
+                                } else {
+                                    saveAction(imageUrl)
                                 }
                             }
                         },
@@ -172,13 +183,7 @@ fun UpdateProductScreen(
                         enabled = !viewModel.isUploading
                     ) {
                         if (viewModel.isUploading) {
-                            // FIXED SPINNER: High contrast (Dark on Bright Cyan)
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(40.dp),
-                                color = NeonCyan, // The brightest color in your palette
-                                trackColor = NeonCyan.copy(alpha = 0.1f), // Adds a faint path behind the spinner
-                                strokeWidth = 3.dp
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DeepMidnight)
                         } else {
                             Icon(Icons.Default.Done, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
@@ -193,54 +198,28 @@ fun UpdateProductScreen(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // IMAGE SECTION
             item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(contentAlignment = Alignment.TopEnd) {
-                        Box(
-                            modifier = Modifier
-                                .size(140.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(SurfaceNavy)
-                                .border(BorderStroke(1.dp, NeonCyan.copy(0.2f)), RoundedCornerShape(20.dp))
-                                .clickable { galleryLauncher.launch("image/*") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val displayUri = viewModel.selectedImageUri ?: if (imageUrl.isNotEmpty()) Uri.parse(imageUrl) else null
-
-                            if (displayUri != null) {
-                                AsyncImage(
-                                    // Cache Buster added to the displayUri for instant updates
-                                    model = if (displayUri.toString().startsWith("http")) "${displayUri}?t=${System.currentTimeMillis()}" else displayUri,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = NeonCyan)
-                            }
-                        }
-
-                        if (viewModel.selectedImageUri != null || imageUrl.isNotEmpty()) {
-                            IconButton(
-                                onClick = {
-                                    viewModel.selectedImageUri = null
-                                    imageUrl = ""
-                                },
-                                modifier = Modifier
-                                    .padding(4.dp)
-                                    .size(28.dp)
-                                    .background(DangerRed, CircleShape)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Remove Image",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(140.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(SurfaceNavy)
+                            .border(BorderStroke(1.dp, NeonCyan.copy(0.2f)), RoundedCornerShape(20.dp))
+                            .clickable { galleryLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val displayUri = viewModel.selectedImageUri ?: if (imageUrl.isNotEmpty()) Uri.parse(imageUrl) else null
+                        if (displayUri != null) {
+                            AsyncImage(
+                                model = displayUri,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = NeonCyan)
                         }
                     }
                 }
@@ -250,14 +229,31 @@ fun UpdateProductScreen(
                 UpdateCyberTextField(value = productName, onValueChange = { productName = it }, label = "Item Name")
             }
 
+            // CLASSIFICATION SECTION
             item {
-                CategorySelector(
-                    currentCategory = category,
-                    onCategorySelected = { category = it },
-                    existingCategories = dynamicCategories
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(text = "Classification", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+
+                    com.management.inventorypro.ui.theme.screens.add.CategorySelector(
+                        label = "Main Category",
+                        currentCategory = mainCategory,
+                        onCategorySelected = {
+                            mainCategory = it
+                            subCategory = ""
+                        },
+                        existingCategories = dynamicMainCategories
+                    )
+
+                    com.management.inventorypro.ui.theme.screens.add.CategorySelector(
+                        label = "Sub-Category (Optional)",
+                        currentCategory = subCategory,
+                        onCategorySelected = { subCategory = it },
+                        existingCategories = dynamicSubCategories
+                    )
+                }
             }
 
+            // METADATA SECTION
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(text = "Advanced Metadata", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 16.sp)

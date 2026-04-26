@@ -129,6 +129,9 @@ class ProductViewModel(application: Application) : AndroidViewModel(application)
     ) {
         val uid = auth.currentUser?.uid ?: return
 
+        // Start the loading state immediately
+        isUploading = true
+
         val ref = if (!productId.isNullOrEmpty()) {
             database.getReference("users").child(uid).child("inventory").child(productId)
         } else {
@@ -136,6 +139,8 @@ class ProductViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val finalId = productId ?: ref.key ?: ""
+
+        // Create the product object using the joined category string ("Main > Sub")
         val product = ProductModel(
             id = finalId,
             name = name,
@@ -145,10 +150,15 @@ class ProductViewModel(application: Application) : AndroidViewModel(application)
         )
 
         ref.setValue(product).addOnSuccessListener {
+            // RESET STATE: This prevents data from "bleeding" into the next item you add/edit
             isUploading = false
-            selectedImageUri = null // <--- ADD THIS LINE
+            selectedImageUri = null
             customFields.clear()
+
             onComplete()
+        }.addOnFailureListener {
+            isUploading = false
+            // You could add a Toast here if the save fails
         }
     }
 

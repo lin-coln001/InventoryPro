@@ -36,14 +36,6 @@ import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
 
-
-// --- CONSISTENCY PALETTE ---
-//val DeepMidnight = Color(0xFF0A0E1A)
-//val SurfaceNavy = Color(0xFF161C2C)
-//val NeonCyan = Color(0xFF00E5FF)
-//val SoftCyan = Color(0xFFB2EBF2)
-//val DangerRed = Color(0xFFFF5252)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddProductScreen(
@@ -51,15 +43,27 @@ fun AddProductScreen(
     viewModel: ProductViewModel = viewModel()
 ) {
     var productName by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Uncategorized") }
+
+    // --- TWO-LEVEL HIERARCHY STATE ---
+    var mainCategory by remember { mutableStateOf("Uncategorized") }
+    var subCategory by remember { mutableStateOf("") }
+
     val allProducts by viewModel.products.collectAsState()
 
-    val dynamicCategories = remember(allProducts) {
-        allProducts.map { it.category }
+    // Top-level categories (Main)
+    val dynamicMainCategories = remember(allProducts) {
+        allProducts.map { it.category.split(" > ").first() }
             .filter { it.isNotBlank() }
-            .distinct()
-            .sorted()
+            .distinct().sorted()
             .ifEmpty { listOf("Uncategorized") }
+    }
+
+    // Contextual Sub-categories based on selected Main Category
+    val dynamicSubCategories = remember(mainCategory, allProducts) {
+        allProducts
+            .filter { it.category.startsWith("$mainCategory > ") }
+            .map { it.category.substringAfter(" > ") }
+            .distinct().sorted()
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -122,16 +126,33 @@ fun AddProductScreen(
                     )
                 }
 
-                // --- CATEGORY DROPDOWN ---
+                // --- CLASSIFICATION SECTION (TWO LEVELS) ---
                 item {
-                    CategorySelector(
-                        currentCategory = category,
-                        onCategorySelected = { category = it },
-                        existingCategories = dynamicCategories
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(text = "Classification", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+
+                        // Main Category Selector
+                        CategorySelector(
+                            label = "Main Category",
+                            currentCategory = mainCategory,
+                            onCategorySelected = {
+                                mainCategory = it
+                                subCategory = "" // Reset sub-category when main changes
+                            },
+                            existingCategories = dynamicMainCategories
+                        )
+
+                        // Sub-Category Selector
+                        CategorySelector(
+                            label = "Sub-Category (Optional)",
+                            currentCategory = subCategory,
+                            onCategorySelected = { subCategory = it },
+                            existingCategories = dynamicSubCategories
+                        )
+                    }
                 }
 
-                // --- DYNAMIC CUSTOM FIELDS HEADER ---
+                // --- DYNAMIC CUSTOM FIELDS SECTION ---
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(text = "Custom Metadata", color = NeonCyan, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -143,7 +164,6 @@ fun AddProductScreen(
                     }
                 }
 
-                // --- CUSTOM FIELD LIST ---
                 itemsIndexed(viewModel.customFields) { index, field ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -173,28 +193,29 @@ fun AddProductScreen(
                     Button(
                         onClick = {
                             if (productName.isNotBlank()) {
+                                // Logic: Join Main and Sub if Sub exists
+                                val finalPath = if (subCategory.isNotBlank()) "$mainCategory > $subCategory" else mainCategory
+
                                 val currentUri = viewModel.selectedImageUri
-                                // Generate the Firebase ID
-                                val newProductId = FirebaseDatabase.getInstance().getReference("users").push().key ?: System.currentTimeMillis().toString()
+                                val newProductId = FirebaseDatabase.getInstance().getReference("users").push().key
+                                    ?: System.currentTimeMillis().toString()
 
                                 if (currentUri != null) {
-                                    // SITUATION A: Upload image first, then save to Firebase
                                     viewModel.uploadToCloudinary(currentUri) { webUrl ->
                                         viewModel.saveProductToFirebase(
                                             productId = newProductId,
                                             name = productName,
-                                            category = category,
+                                            category = finalPath,
                                             imageUrl = webUrl,
                                             onComplete = { navController.popBackStack() }
                                         )
                                     }
                                 } else {
-                                    // SITUATION B: No image selected, save to Firebase immediately
                                     viewModel.saveProductToFirebase(
                                         productId = newProductId,
                                         name = productName,
-                                        category = category,
-                                        imageUrl = "", // Empty string for no image
+                                        category = finalPath,
+                                        imageUrl = "",
                                         onComplete = { navController.popBackStack() }
                                     )
                                 }
@@ -206,13 +227,7 @@ fun AddProductScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         if (viewModel.isUploading) {
-                            // High-contrast spinner: Dark on Bright
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(40.dp),
-                                color = NeonCyan, // The brightest color in your palette
-                                trackColor = NeonCyan.copy(alpha = 0.1f), // Adds a faint path behind the spinner
-                                strokeWidth = 3.dp
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp), color = DeepMidnight, strokeWidth = 3.dp)
                         } else {
                             Text("ADD ITEM", fontWeight = FontWeight.ExtraBold)
                         }
@@ -253,14 +268,15 @@ fun CyberTextField(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategorySelector(
+    label: String,
     currentCategory: String,
     onCategorySelected: (String) -> Unit,
     existingCategories: List<String>
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text("Classification", color = SoftCyan.copy(0.6f), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 8.dp))
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(label, color = SoftCyan.copy(0.6f), style = MaterialTheme.typography.labelLarge)
 
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
             OutlinedTextField(
