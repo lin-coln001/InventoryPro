@@ -77,7 +77,7 @@ fun LoginScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "SYSTEM S",
+            text = "SYSTEM ACCESS",
             fontSize = 28.sp,
             fontWeight = FontWeight.ExtraBold,
             color = NeonCyan,
