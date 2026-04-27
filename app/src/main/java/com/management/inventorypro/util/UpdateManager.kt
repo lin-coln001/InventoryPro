@@ -26,8 +26,12 @@ class UpdateManager(private val context: Context) {
         val request = DownloadManager.Request(Uri.parse(apkUrl))
             .setTitle("InventoryPro Update")
             .setDescription("Downloading latest version...")
+            .setMimeType("application/vnd.android.package-archive")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationUri(Uri.fromFile(destination))
+            // Use this specific method for better compatibility
+            .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "update.apk")
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(true)
 
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadId = manager.enqueue(request)
@@ -79,12 +83,38 @@ class UpdateManager(private val context: Context) {
     }
 
     private fun installApk(file: File) {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // 1. Check for "Install Unknown Apps" permission (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!context.packageManager.canRequestPackageInstalls()) {
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+                // We return because the user needs to toggle the switch and then try again
+                return
+            }
         }
-        context.startActivity(intent)
+
+        // 2. Proceed with Installation
+        try {
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Clear top ensures we don't have multiple installer instances
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("UpdateManager", "Installation failed: ${e.message}")
+        }
     }
 }
