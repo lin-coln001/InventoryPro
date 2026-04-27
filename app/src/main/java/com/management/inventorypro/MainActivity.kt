@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
 
                 // Check GitHub for updates
                 LaunchedEffect(Unit) {
-                    val jsonUrl = "https://raw.githubusercontent.com/lin-coln001/InventoryPro/main/update.json"
+                    val jsonUrl = "https://raw.githubusercontent.com/lin-coln001/InventoryPro/refs/heads/master/update.json"
                     val info = updateManager.checkForUpdates(jsonUrl)
 
                     if (info != null && info.first > currentVersion) {
