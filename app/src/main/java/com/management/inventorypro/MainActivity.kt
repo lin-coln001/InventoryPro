@@ -38,18 +38,25 @@ class MainActivity : ComponentActivity() {
 
                 // --- MANUAL VERSION TRACKING ---
                 // Change this number manually when you push a new APK to GitHub
-//                val currentVersion = BuildConfig.VERSION_CODE
-                val currentVersion = 0
+                val currentVersion = BuildConfig.VERSION_CODE
+
 
                 var updateData by remember { mutableStateOf<Pair<Int, String>?>(null) }
 
                 // Check GitHub for updates
                 LaunchedEffect(Unit) {
-                    val jsonUrl = "https://raw.githubusercontent.com/lin-coln001/InventoryPro/refs/heads/master/update.json"
-                    val info = updateManager.checkForUpdates(jsonUrl)
+                    try {
+                        // Adding a timestamp at the end avoids GitHub's 5-minute cache
+                        val jsonUrl = "https://raw.githubusercontent.com/lin-coln001/InventoryPro/master/update.json?nocache=${System.currentTimeMillis()}"
+                        val info = updateManager.checkForUpdates(jsonUrl)
 
-                    if (info != null && info.first > currentVersion) {
-                        updateData = info
+                        android.util.Log.d("UpdateCheck", "Local: $currentVersion, Remote: ${info?.first}")
+
+                        if (info != null && info.first > currentVersion) {
+                            updateData = info
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("UpdateCheck", "Error: ${e.message}")
                     }
                 }
 
