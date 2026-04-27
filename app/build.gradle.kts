@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.management.inventorypro"
-    compileSdk = 35 // Simplified and stable
+    compileSdk = 36 // Simplified and stable
 
     defaultConfig {
         applicationId = "com.management.inventorypro"
         minSdk = 24
-        targetSdk = 35 // Matches compileSdk
+        targetSdk = 36 // Matches compileSdk
         versionCode = 1
         versionName = "1.0"
 
