@@ -36,6 +36,7 @@ import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.OffWhite
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
+import com.management.inventorypro.ui.theme.screens.dashboard.ActionCard
 
 // --- CUSTOM NEON COLORS ---
 //val DeepMidnight = Color(0xFF0A0E1A)   // Background
@@ -192,7 +193,7 @@ fun DashboardScreen(navController: NavHostController) {
 
             // Action: View Inventory
             ActionCard(
-                title = "View Inventory",
+                title = "View Blickies",
                 subtitle = "Check current stock levels",
                 icon = Icons.Filled.List,
                 onClick = { navController.navigate("view_inventory") }
