@@ -38,7 +38,8 @@ class MainActivity : ComponentActivity() {
 
                 // --- MANUAL VERSION TRACKING ---
                 // Change this number manually when you push a new APK to GitHub
-                val currentVersion = BuildConfig.VERSION_CODE
+//                val currentVersion = BuildConfig.VERSION_CODE
+                val currentVersion = 0
 
                 var updateData by remember { mutableStateOf<Pair<Int, String>?>(null) }
 
