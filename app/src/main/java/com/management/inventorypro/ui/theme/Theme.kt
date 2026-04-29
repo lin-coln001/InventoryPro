@@ -78,6 +78,7 @@ fun InventoryProTheme(
 //    }
     val colorScheme = MidnightColorScheme
 
+
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
