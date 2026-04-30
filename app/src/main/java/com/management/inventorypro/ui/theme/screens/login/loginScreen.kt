@@ -32,6 +32,7 @@ import com.management.inventorypro.ui.theme.DeepMidnight
 import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
+import com.management.inventorypro.ui.theme.screens.login.LoginCyberField
 
 // Consistency Palette
 //val DeepMidnight = Color(0xFF0A0E1A)
@@ -93,7 +94,7 @@ fun LoginScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(32.dp))
 
         // --- INPUT FIELDS ---
-        LoginCyberField(
+            LoginCyberField(
             value = email,
             onValueChange = { email = it },
             label = "Email Address",

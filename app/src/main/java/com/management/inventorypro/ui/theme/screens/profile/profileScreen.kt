@@ -36,6 +36,7 @@ import com.management.inventorypro.ui.theme.DeepMidnight
 import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
+import com.management.inventorypro.ui.theme.screens.profile.ProfileCyberField
 
 // Consistency Palette
 //val DeepMidnight = Color(0xFF0A0E1A)

@@ -1,5 +1,7 @@
 package com.management.inventorypro.ui.theme.screens.settings
 
+import android.content.Context // Added for SharedPreferences
+import androidx.compose.foundation.BorderStroke // Added for styling
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext // Added to get context
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -27,17 +30,14 @@ import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
 
-// Consistency Palette
-//val DeepMidnight = Color(0xFF0A0E1A)
-//val SurfaceNavy = Color(0xFF161C2C)
-//val NeonCyan = Color(0xFF00E5FF)
-//val SoftCyan = Color(0xFFB2EBF2)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(navController: NavController) {
     val uid = FirebaseAuth.getInstance().currentUser?.uid
     val database = FirebaseDatabase.getInstance()
+    val context = LocalContext.current // To access SharedPreferences
+    val sharedPref = remember { context.getSharedPreferences("InventoryPrefs", Context.MODE_PRIVATE) }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -172,6 +172,56 @@ fun SettingsScreen(navController: NavController) {
                 )
             }
 
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // --- NEW: RECALIBRATE SYSTEM CARD ---
+            Text(
+                text = "Maintenance",
+                color = SoftCyan.copy(0.6f),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            Surface(
+                color = SurfaceNavy,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.1f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("System Calibration", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Re-run the setup survey",
+                            color = SoftCyan.copy(0.5f),
+                            fontSize = 12.sp
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            // RESET THE FLAG
+                            sharedPref.edit().putBoolean("first_run", true).apply()
+                            // HEAD BACK TO DASHBOARD
+                            navController.navigate("dashboard") {
+                                popUpTo("settings") { inclusive = true }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NeonCyan.copy(alpha = 0.1f),
+                            contentColor = NeonCyan
+                        ),
+                        border = BorderStroke(1.dp, NeonCyan),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text("RE-RUN", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
@@ -198,7 +248,7 @@ fun SettingsScreen(navController: NavController) {
                 enabled = !isSaving
             ) {
                 if (isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = NeonCyan)
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DeepMidnight)
                 } else {
                     Text("SAVE CHANGES", fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                 }

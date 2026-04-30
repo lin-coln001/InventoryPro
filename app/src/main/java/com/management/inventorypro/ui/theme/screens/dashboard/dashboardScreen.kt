@@ -1,5 +1,6 @@
 package com.management.inventorypro.ui.theme.screens.dashboard
 
+
 import android.content.Context
 import android.os.Build.VERSION.SDK_INT
 import androidx.compose.animation.core.animateFloatAsState
@@ -31,8 +32,10 @@ import com.management.inventorypro.data.AuthViewModel
 import com.management.inventorypro.models.inventoryQuestions
 import com.management.inventorypro.ui.theme.*
 
-// --- SURVEY DATA ---
 
+import kotlinx.coroutines.launch
+
+// --- SURVEY DATA ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +43,6 @@ fun DashboardScreen(navController: NavHostController) {
     val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
 
-    // 1. SURVEY & PREFS STATE
     val sharedPref = remember { context.getSharedPreferences("InventoryPrefs", Context.MODE_PRIVATE) }
     var showSurvey by remember { mutableStateOf(sharedPref.getBoolean("first_run", true)) }
 
@@ -49,6 +51,10 @@ fun DashboardScreen(navController: NavHostController) {
 
     var username by remember { mutableStateOf("User") }
     var itemCount by remember { mutableStateOf(0) }
+
+    // Snackbar Logic
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         authViewModel.getUsername { username = it }
@@ -67,6 +73,24 @@ fun DashboardScreen(navController: NavHostController) {
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = DeepMidnight,
+            // --- ADDED SNACKBAR HOST ---
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState) { data ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
+                        border = BorderStroke(1.dp, NeonCyan),
+                        modifier = Modifier.padding(16.dp).fillMaxWidth()
+                    ) {
+                        Text(
+                            text = data.visuals.message,
+                            color = NeonCyan,
+                            modifier = Modifier.padding(16.dp),
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            },
             topBar = {
                 TopAppBar(
                     title = { Text("InventoryPro", fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp) },
@@ -153,12 +177,14 @@ fun DashboardScreen(navController: NavHostController) {
             }
         }
 
-        // --- SURVEY OVERLAY ---
         if (showSurvey) {
             OnboardingSurvey(
                 onComplete = {
                     sharedPref.edit().putBoolean("first_run", false).apply()
                     showSurvey = false
+                    scope.launch {
+                        snackbarHostState.showSnackbar("SYSTEM OPTIMIZED: Inventory Engine Ready")
+                    }
                 },
                 onSkip = {
                     sharedPref.edit().putBoolean("first_run", false).apply()
@@ -168,110 +194,110 @@ fun DashboardScreen(navController: NavHostController) {
         }
     }
 }
+    @Composable
+    fun OnboardingSurvey(onComplete: () -> Unit, onSkip: () -> Unit) {
+        var currentStep by remember { mutableIntStateOf(-1) }
+        val selectedAnswers = remember { mutableStateListOf<Int?>(null, null, null, null, null) }
+        val progress by animateFloatAsState(targetValue = if (currentStep >= 0) (currentStep + 1) / 5f else 0f)
 
-@Composable
-fun OnboardingSurvey(onComplete: () -> Unit, onSkip: () -> Unit) {
-    var currentStep by remember { mutableIntStateOf(-1) }
-    val selectedAnswers = remember { mutableStateListOf<Int?>(null, null, null, null, null) }
-    val progress by animateFloatAsState(targetValue = if (currentStep >= 0) (currentStep + 1) / 5f else 0f)
-
-    if (currentStep == -1) {
-        AlertDialog(
-            containerColor = SurfaceNavy,
-            onDismissRequest = onSkip,
-            title = { Text("Personalize System", color = NeonCyan, fontWeight = FontWeight.Bold) },
-            text = { Text("Configure your inventory environment with 5 quick questions.", color = Color.White) },
-            confirmButton = { TextButton(onClick = { currentStep = 0 }) { Text("START", color = NeonCyan) } },
-            dismissButton = { TextButton(onClick = onSkip) { Text("SKIP", color = Color.White.copy(0.5f)) } }
-        )
-    } else if (currentStep < inventoryQuestions.size) {
-        val q = inventoryQuestions[currentStep]
-        AlertDialog(
-            containerColor = SurfaceNavy,
-            onDismissRequest = { },
-            title = {
-                Column {
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
-                        color = NeonCyan,
-                        trackColor = Color.White.copy(0.1f)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("STEP ${currentStep + 1}/5", fontSize = 12.sp, color = SoftCyan)
-                }
-            },
-            text = {
-                Column {
-                    Text(q.question, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    q.options.forEachIndexed { index, option ->
-                        val isSel = selectedAnswers[currentStep] == index
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth().padding(vertical = 4.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSel) NeonCyan.copy(0.1f) else Color.Transparent)
-                                .border(1.dp, if (isSel) NeonCyan else Color.Transparent, RoundedCornerShape(8.dp))
-                                .clickable { selectedAnswers[currentStep] = index }.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(selected = isSel, onClick = { selectedAnswers[currentStep] = index }, colors = RadioButtonDefaults.colors(selectedColor = NeonCyan))
-                            Text(option, color = if (isSel) NeonCyan else Color.White, modifier = Modifier.padding(start = 8.dp))
+        if (currentStep == -1) {
+            AlertDialog(
+                containerColor = SurfaceNavy,
+                onDismissRequest = onSkip,
+                title = { Text("Personalize System", color = NeonCyan, fontWeight = FontWeight.Bold) },
+                text = { Text("Configure your inventory environment with 5 quick questions.", color = Color.White) },
+                confirmButton = { TextButton(onClick = { currentStep = 0 }) { Text("START", color = NeonCyan) } },
+                dismissButton = { TextButton(onClick = onSkip) { Text("SKIP", color = Color.White.copy(0.5f)) } }
+            )
+        } else if (currentStep < inventoryQuestions.size) {
+            val q = inventoryQuestions[currentStep]
+            AlertDialog(
+                containerColor = SurfaceNavy,
+                onDismissRequest = { },
+                title = {
+                    Column {
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                            color = NeonCyan,
+                            trackColor = Color.White.copy(0.1f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("STEP ${currentStep + 1}/5", fontSize = 12.sp, color = SoftCyan)
+                    }
+                },
+                text = {
+                    Column {
+                        Text(q.question, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        q.options.forEachIndexed { index, option ->
+                            val isSel = selectedAnswers[currentStep] == index
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth().padding(vertical = 4.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSel) NeonCyan.copy(0.1f) else Color.Transparent)
+                                    .border(1.dp, if (isSel) NeonCyan else Color.Transparent, RoundedCornerShape(8.dp))
+                                    .clickable { selectedAnswers[currentStep] = index }.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = isSel, onClick = { selectedAnswers[currentStep] = index }, colors = RadioButtonDefaults.colors(selectedColor = NeonCyan))
+                                Text(option, color = if (isSel) NeonCyan else Color.White, modifier = Modifier.padding(start = 8.dp))
+                            }
                         }
                     }
+                },
+                confirmButton = {
+                    Button(
+                        enabled = selectedAnswers[currentStep] != null,
+                        onClick = { if (currentStep == 4) onComplete() else currentStep++ },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+                    ) { Text(if (currentStep == 4) "FINISH" else "NEXT", color = DeepMidnight) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { if (currentStep == 0) currentStep = -1 else currentStep-- }) {
+                        Text("BACK", color = Color.White.copy(0.6f))
+                    }
                 }
-            },
-            confirmButton = {
-                Button(
-                    enabled = selectedAnswers[currentStep] != null,
-                    onClick = { if (currentStep == 4) onComplete() else currentStep++ },
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
-                ) { Text(if (currentStep == 4) "FINISH" else "NEXT", color = DeepMidnight) }
-            },
-            dismissButton = {
-                TextButton(onClick = { if (currentStep == 0) currentStep = -1 else currentStep-- }) {
-                    Text("BACK", color = Color.White.copy(0.6f))
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun StatCard(value: String, label: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.height(100.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
-        border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.2f)),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = value, color = NeonCyan, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text(text = label, color = SoftCyan.copy(0.7f), fontSize = 12.sp)
+            )
         }
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ActionCard(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(32.dp))
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text(text = subtitle, fontSize = 12.sp, color = SoftCyan.copy(0.6f))
+    @Composable
+    fun StatCard(value: String, label: String, modifier: Modifier = Modifier) {
+        Card(
+            modifier = modifier.height(100.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
+            border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.2f)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = value, color = NeonCyan, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(text = label, color = SoftCyan.copy(0.7f), fontSize = 12.sp)
             }
-            Spacer(modifier = Modifier.weight(1f))
-            Icon(Icons.Filled.ArrowForwardIos, contentDescription = null, tint = SoftCyan.copy(0.3f), modifier = Modifier.size(16.dp))
         }
     }
-}
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun ActionCard(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+        Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(32.dp))
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(text = subtitle, fontSize = 12.sp, color = SoftCyan.copy(0.6f))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(Icons.Filled.ArrowForwardIos, contentDescription = null, tint = SoftCyan.copy(0.3f), modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+

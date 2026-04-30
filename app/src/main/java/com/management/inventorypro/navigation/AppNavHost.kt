@@ -15,14 +15,14 @@ import com.management.inventorypro.ui.theme.screens.add.AddProductScreen
 
 import com.management.inventorypro.ui.theme.screens.dashboard.DashboardScreen
 import com.management.inventorypro.ui.theme.screens.landing.LandingScreen
-import com.management.inventorypro.ui.theme.screens.landing.OnboardingSurvey
+
 
 
 import com.management.inventorypro.ui.theme.screens.login.LoginScreen
 import com.management.inventorypro.ui.theme.screens.profile.ProfileScreen
-
 import com.management.inventorypro.ui.theme.screens.register.RegisterScreen
 import com.management.inventorypro.ui.theme.screens.settings.SettingsScreen
+
 import com.management.inventorypro.ui.theme.screens.tips.TipsScreen
 import com.management.inventorypro.ui.theme.screens.update.UpdateProductScreen
 import com.management.inventorypro.ui.theme.screens.view.ViewInventoryScreen

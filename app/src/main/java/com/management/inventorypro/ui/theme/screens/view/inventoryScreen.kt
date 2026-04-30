@@ -37,6 +37,7 @@ import com.management.inventorypro.ui.theme.DeepMidnight
 import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
+import com.management.inventorypro.ui.theme.screens.view.CategoryHeader
 import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -42,6 +42,7 @@ import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
 import com.management.inventorypro.ui.theme.screens.add.CategorySelector
+import com.management.inventorypro.ui.theme.screens.update.UpdateCyberTextField
 
 
 // Reusing your defined palette

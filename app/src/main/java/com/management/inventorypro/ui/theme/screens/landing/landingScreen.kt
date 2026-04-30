@@ -129,5 +129,5 @@ fun LandingScreen(onGetStarted: () -> Unit ) {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun LandingScreenPreview(){
-    LandingScreen(onGetStarted = {})
+        LandingScreen(onGetStarted = {})
 }
