@@ -90,7 +90,7 @@ fun DashboardScreen(navController: NavHostController) {
                         Column {
                             Text("InventoryPro", fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
                             Text(
-                                text = if (isSystemOnline) "LINK ACTIVE" else "CONNECTION SEVERED",
+                                text = if (isSystemOnline) "All features can be accessed" else "Some features may be unavailable offline",
                                 fontSize = 10.sp,
                                 color = themeColor,
                                 fontWeight = FontWeight.Bold,
@@ -187,7 +187,7 @@ fun DashboardScreen(navController: NavHostController) {
 
                 ActionCard(
                     title = "Add New Item",
-                    subtitle = if (isSystemOnline) "Register product to database" else "Sync Required to Proceed",
+                    subtitle = if (isSystemOnline) "Register product to database" else "This screen cannot be accessed while offline",
                     icon = Icons.Filled.Inventory,
                     iconColor = themeColor,
                     onClick = { if (isSystemOnline) navController.navigate("add_product") }
@@ -195,7 +195,7 @@ fun DashboardScreen(navController: NavHostController) {
 
                 ActionCard(
                     title = "View Inventory",
-                    subtitle = if (isSystemOnline) "Check current stock levels" else "Local cache unavailable",
+                    subtitle = if (isSystemOnline) "View current inventory" else "Local cache unavailable",
                     icon = Icons.Filled.List,
                     iconColor = themeColor,
                     onClick = { if (isSystemOnline) navController.navigate("view_inventory") }
