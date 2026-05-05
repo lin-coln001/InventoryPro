@@ -39,7 +39,8 @@ import com.management.inventorypro.models.CustomField
 import com.management.inventorypro.models.ProductModel
 import com.management.inventorypro.ui.theme.*
 import com.management.inventorypro.ui.theme.screens.add.CategorySelector
-import com.management.inventorypro.util.isOnline
+import com.management.inventorypro.util.ConnectivityObserver
+
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -55,17 +56,14 @@ fun UpdateProductScreen(
     val listState = rememberLazyListState()
 
     // --- 1. CONNECTION & VALIDATION STATES ---
-    var isSystemOnline by remember { mutableStateOf(isOnline(context)) }
+    val connectivityObserver = remember { ConnectivityObserver(context) }
+
+    // --- OFFLINE SHIFT LOGIC ---
+    val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
     var firstErrorIndex by remember { mutableStateOf<Int?>(null) }
     var nameHasError by remember { mutableStateOf(false) }
     val themeColor = if (isSystemOnline) NeonCyan else DangerRed
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            isSystemOnline = isOnline(context)
-            delay(2000)
-        }
-    }
 
     // --- 2. DATABASE & FORM STATE ---
     val allProducts by viewModel.products.collectAsState()

@@ -2,6 +2,7 @@ package com.management.inventorypro.ui.theme.screens.login
 
 import android.content.Context
 import android.os.Build.VERSION.SDK_INT
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -47,6 +48,8 @@ fun LoginScreen(navController: NavController) {
     var password by remember { mutableStateOf("") }
     val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
+    var showResetDialog by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
 
     val imageLoader = ImageLoader.Builder(context)
         .components {
@@ -94,7 +97,7 @@ fun LoginScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(32.dp))
 
         // --- INPUT FIELDS ---
-            LoginCyberField(
+        LoginCyberField(
             value = email,
             onValueChange = { email = it },
             label = "Email Address",
@@ -167,15 +170,65 @@ fun LoginScreen(navController: NavController) {
                 modifier = Modifier.clickable { navController.navigate("register") }
             )
         }
-
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Forgot password?",
-            color = SoftCyan.copy(0.4f),
-            fontSize = 12.sp,
-            modifier = Modifier.clickable { /* Handle forgot password */ }
+            text = "Forgot Password?",
+            color = NeonCyan.copy(alpha = 0.7f),
+            fontSize = 14.sp,
+            modifier = Modifier
+                .clickable { showResetDialog = true }
+                .padding(8.dp)
         )
+
+        if (showResetDialog) {
+            AlertDialog(
+                containerColor = SurfaceNavy,
+                onDismissRequest = { showResetDialog = false },
+                title = { Text("RECOVER ACCESS", color = NeonCyan, fontWeight = FontWeight.Bold) },
+                text = {
+                    Column {
+                        Text("A reset link will be sent to your email address.", color = Color.White)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = resetEmail,
+                            onValueChange = { resetEmail = it },
+                            label = { Text("Email", color = SoftCyan.copy(0.5f)) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = NeonCyan,
+                                unfocusedBorderColor = Color.White.copy(0.2f),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            authViewModel.sendPasswordReset(
+                                email = resetEmail,
+                                onSuccess = {
+                                    showResetDialog = false
+                                    Toast.makeText(context, "Reset email sent!", Toast.LENGTH_LONG).show()
+                                },
+                                onError = { error ->
+                                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    ) {
+                        Text("SEND", color = NeonCyan)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetDialog = false }) {
+                        Text("CANCEL", color = Color.White.copy(0.5f))
+                    }
+                }
+            )
+        }
     }
 }
 

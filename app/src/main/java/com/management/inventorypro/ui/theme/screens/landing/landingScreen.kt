@@ -21,7 +21,7 @@ import com.management.inventorypro.ui.theme.SurfaceNavy
 
 
 @Composable
-fun LandingScreen(onGetStarted: () -> Unit ) {
+fun LandingScreen(onGetStarted: () -> Unit  ){
     Box(
         modifier = Modifier
             .fillMaxSize()

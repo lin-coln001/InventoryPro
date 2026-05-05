@@ -37,13 +37,8 @@ import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
 import com.management.inventorypro.ui.theme.screens.profile.ProfileCyberField
+import com.management.inventorypro.util.ConnectivityObserver
 
-// Consistency Palette
-//val DeepMidnight = Color(0xFF0A0E1A)
-//val SurfaceNavy = Color(0xFF161C2C)
-//val NeonCyan = Color(0xFF00E5FF)
-//val SoftCyan = Color(0xFFB2EBF2)
-//val DangerRed = Color(0xFFFF5252)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,11 +50,16 @@ fun ProfileScreen(
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     val database = FirebaseDatabase.getInstance().getReference("User").child(currentUser?.uid ?: "")
+    val connectivityObserver = remember { ConnectivityObserver(context) }
+
+    // --- OFFLINE SHIFT LOGIC ---
+    val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
+    val themeColor = if (isSystemOnline) NeonCyan else DangerRed
+    val unselectedColor = if (isSystemOnline) SoftCyan.copy(0.5f) else DangerRed.copy(0.3f)
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // --- STATE ---
     var username by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     val email = currentUser?.email ?: "No email linked"
@@ -67,20 +67,30 @@ fun ProfileScreen(
     var isLoading by remember { mutableStateOf(true) }
     var imageUrl by remember { mutableStateOf("") }
 
+
+    // Track if we ever successfully got data
+    var hasLoadedData by remember { mutableStateOf(false) }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { imageUrl = it.toString() }
-    }
+    ) { uri: Uri? -> uri?.let { imageUrl = it.toString() } }
 
-    LaunchedEffect(Unit) {
-        database.get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                username = snapshot.child("username").value?.toString() ?: ""
-                phoneNumber = snapshot.child("phone").value?.toString() ?: ""
-                imageUrl = snapshot.child("profileImageUrl").value?.toString() ?: ""
+    LaunchedEffect(isSystemOnline) {
+        if (isSystemOnline && !hasLoadedData) {
+            isLoading = true
+            database.get().addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    username = snapshot.child("username").value?.toString() ?: ""
+                    phoneNumber = snapshot.child("phone").value?.toString() ?: ""
+                    imageUrl = snapshot.child("profileImageUrl").value?.toString() ?: ""
+                    hasLoadedData = true
+                }
+                isLoading = false
+            }.addOnFailureListener {
+                isLoading = false
             }
-            isLoading = false
+        } else if (!isSystemOnline && !hasLoadedData) {
+            isLoading = false // Stop spinner so we can show the "No Connection" error
         }
     }
 
@@ -91,41 +101,13 @@ fun ProfileScreen(
                 title = { Text("Your Profile", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = DeepMidnight,
-                    titleContentColor = NeonCyan
+                    titleContentColor = themeColor
                 ),
-                // ... inside ProfileScreen TopAppBar actions ...
                 actions = {
-                    if (viewModel.isUploading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(40.dp),
-                            color = NeonCyan, // The brightest color in your palette
-                            trackColor = NeonCyan.copy(alpha = 0.1f), // Adds a faint path behind the spinner
-                            strokeWidth = 3.dp
-                        )
-                    } else {
-                        IconButton(onClick = {
-                            if (isEditing) {
-                                if (imageUrl.startsWith("content://")) {
-                                    // Use the specific profile upload function
-                                    viewModel.uploadProfilePicture(Uri.parse(imageUrl)) { webUrl ->
-                                        saveProfileData(database, username, phoneNumber, webUrl) {
-                                            isEditing = false
-                                        }
-                                    }
-                                } else {
-                                    saveProfileData(database, username, phoneNumber, imageUrl) {
-                                        isEditing = false
-                                    }
-                                }
-                            } else {
-                                isEditing = true
-                            }
-                        }) {
-                            Icon(
-                                imageVector = if (isEditing) Icons.Default.Save else Icons.Default.Edit,
-                                contentDescription = null,
-                                tint = if (isEditing) NeonCyan else SoftCyan.copy(0.7f)
-                            )
+                    // Only show edit button if we have data and are online
+                    if (isSystemOnline && hasLoadedData) {
+                        IconButton(onClick = { isEditing = !isEditing }) {
+                            Icon(if (isEditing) Icons.Default.Save else Icons.Default.Edit, null, tint = themeColor)
                         }
                     }
                 }
@@ -139,7 +121,6 @@ fun ProfileScreen(
                     Triple("tips", Icons.Filled.Lightbulb, "Tips"),
                     Triple("profile", Icons.Filled.Person, "Profile")
                 )
-
                 navItems.forEach { (route, icon, label) ->
                     val isSelected = currentRoute == route
                     NavigationBarItem(
@@ -153,139 +134,105 @@ fun ProfileScreen(
                                 }
                             }
                         },
-                        icon = { Icon(icon, contentDescription = label) },
-                        label = { Text(label) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = NeonCyan,
-                            selectedTextColor = NeonCyan,
-                            unselectedIconColor = SoftCyan.copy(0.5f),
-                            unselectedTextColor = SoftCyan.copy(0.5f),
-                            indicatorColor = NeonCyan.copy(0.1f)
-                        )
+                        icon = { Icon(icon, null, tint = if (isSelected) themeColor else unselectedColor) },
+                        label = { Text(label, color = if (isSelected) themeColor else unselectedColor) },
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = themeColor.copy(0.1f))
                     )
                 }
             }
         }
     ) { padding ->
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().background(DeepMidnight), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = NeonCyan)
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = themeColor)
             }
-        } else {
-            Column(
-                modifier = Modifier.padding(padding).fillMaxSize().padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(32.dp))
+            // SCENARIO 1: Coming from another screen while offline (No data yet)
+            else if (!isSystemOnline && !hasLoadedData) {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.size(64.dp), tint = DangerRed)
+                    Spacer(Modifier.height(16.dp))
+                    Text("UPLINK FAILED", color = DangerRed, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                    Text(
+                        "Profile data could not be retrieved. Please check your connection and try again.",
+                        color = Color.White.copy(0.7f),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+            // SCENARIO 2: Data exists (Already here or loaded), just shift to red
+            else {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(32.dp))
 
-                // --- PROFILE AVATAR WITH REMOVE OPTION ---
-                Box(contentAlignment = Alignment.TopEnd) {
+                    // --- AVATAR (Border shifts to red if offline) ---
                     Box(
                         modifier = Modifier
                             .size(120.dp)
-                            .border(BorderStroke(2.dp, if (isEditing) NeonCyan else Color.White.copy(0.1f)), CircleShape)
-                            .padding(4.dp)
+                            .border(BorderStroke(2.dp, if (isEditing && isSystemOnline) themeColor else Color.White.copy(0.1f)), CircleShape)
                             .clip(CircleShape)
-                            .background(SurfaceNavy)
-                            .clickable(enabled = isEditing) { launcher.launch("image/*") },
+                            .background(SurfaceNavy),
                         contentAlignment = Alignment.Center
                     ) {
                         if (imageUrl.isNotEmpty()) {
-                            AsyncImage(
-                                model = imageUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
+                            AsyncImage(model = imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         } else {
-                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(60.dp), tint = SoftCyan.copy(0.3f))
-                        }
-
-                        if (isEditing) {
-                            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.4f)), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = NeonCyan)
-                            }
+                            Icon(Icons.Default.Person, null, modifier = Modifier.size(60.dp), tint = themeColor.copy(0.3f))
                         }
                     }
 
-                    // Remove Image Button
-                    if (isEditing && imageUrl.isNotEmpty()) {
-                        IconButton(
-                            onClick = { imageUrl = "" },
-                            modifier = Modifier
-                                .size(32.dp)
-                                .background(DangerRed, CircleShape)
-                                .border(2.dp, DeepMidnight, CircleShape)
-                        ) {
-                            Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(16.dp))
-                        }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(text = username.ifEmpty { "User" }, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(text = email, fontSize = 14.sp, color = themeColor.copy(0.7f))
+
+                    Spacer(modifier = Modifier.height(40.dp))
+
+                    ProfileCyberField(value = username, onValueChange = { username = it }, label = "Username", enabled = isEditing && isSystemOnline, icon = Icons.Default.Badge, themeColor = themeColor)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ProfileCyberField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone Number", enabled = isEditing && isSystemOnline, icon = Icons.Default.Call, themeColor = themeColor)
+
+                    // Optional: Show "Sync Paused" footer if offline
+                    if (!isSystemOnline) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("SYSTEM OFFLINE: DATA SYNC PAUSED", color = DangerRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(text = if (username.isEmpty()) "No Username Set" else username, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text(text = email, fontSize = 14.sp, color = NeonCyan.copy(0.7f), letterSpacing = 1.sp)
-
-                Spacer(modifier = Modifier.height(40.dp))
-
-                // --- SYSTEM INPUTS ---
-                ProfileCyberField(value = username, onValueChange = { username = it }, label = "Username", enabled = isEditing, icon = Icons.Default.Badge)
-                Spacer(modifier = Modifier.height(16.dp))
-                ProfileCyberField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone Number", enabled = isEditing, icon = Icons.Default.Call)
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // --- LOGOUT BUTTON ---
-                OutlinedButton(
-                    onClick = {
-                        auth.signOut()
-                        navController.navigate("login") { popUpTo(0) }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(bottom = 8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
-                    border = BorderStroke(1.dp, DangerRed.copy(0.5f)),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Logout, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Logout", fontWeight = FontWeight.Bold)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
-
-// Helper Function to keep the screen code clean
-fun saveProfileData(
-    database: com.google.firebase.database.DatabaseReference,
-    name: String,
-    phone: String,
-    url: String,
-    onSuccess: () -> Unit
-) {
-    val updates = mapOf(
-        "username" to name,
-        "phone" to phone,
-        "profileImageUrl" to url
-    )
-    database.updateChildren(updates).addOnSuccessListener {
-        onSuccess()
-    }
-}
-
 @Composable
-fun ProfileCyberField(value: String, onValueChange: (String) -> Unit, label: String, enabled: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+fun ProfileCyberField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    enabled: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    themeColor: Color // <--- Added this parameter
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label, color = SoftCyan.copy(0.4f)) },
         enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
-        leadingIcon = { Icon(icon, contentDescription = null, tint = if (enabled) NeonCyan else SoftCyan.copy(0.3f)) },
+        // Tint now reacts to the system status
+        leadingIcon = {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (enabled) themeColor else themeColor.copy(alpha = 0.3f)
+            )
+        },
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = NeonCyan,
+            focusedBorderColor = themeColor, // Shifted
             unfocusedBorderColor = Color.White.copy(0.1f),
             disabledBorderColor = Color.White.copy(0.05f),
             focusedContainerColor = SurfaceNavy,
@@ -293,7 +240,8 @@ fun ProfileCyberField(value: String, onValueChange: (String) -> Unit, label: Str
             disabledContainerColor = SurfaceNavy.copy(0.5f),
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
-            disabledTextColor = Color.White.copy(0.6f)
+            disabledTextColor = Color.White.copy(0.6f),
+            focusedLabelColor = themeColor // Optional: makes the floating label shift too
         ),
         shape = RoundedCornerShape(12.dp)
     )

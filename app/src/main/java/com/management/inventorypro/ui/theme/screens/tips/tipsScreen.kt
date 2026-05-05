@@ -10,36 +10,42 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.management.inventorypro.ui.theme.DangerRed
 import com.management.inventorypro.ui.theme.DeepMidnight
 import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
+import com.management.inventorypro.util.ConnectivityObserver
 
-// Consistency Palette
-//val DeepMidnight = Color(0xFF0A0E1A)
-//val SurfaceNavy = Color(0xFF161C2C)
-//val NeonCyan = Color(0xFF00E5FF)
-//val SoftCyan = Color(0xFFB2EBF2)
 
 data class InventoryTip(
     val title: String,
     val description: String,
     val icon: ImageVector
 )
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TipsScreen(navController: NavController) {
+    val context = LocalContext.current
+    val connectivityObserver = remember { ConnectivityObserver(context) }
+
+    // --- OFFLINE SHIFT LOGIC ---
+    val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
+    val themeColor = if (isSystemOnline) NeonCyan else DangerRed
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -58,7 +64,7 @@ fun TipsScreen(navController: NavController) {
                 title = { Text("System Intelligence", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = DeepMidnight,
-                    titleContentColor = NeonCyan
+                    titleContentColor = themeColor // Shifted
                 )
             )
         },
@@ -76,6 +82,8 @@ fun TipsScreen(navController: NavController) {
 
                 navItems.forEach { (route, icon, label) ->
                     val isSelected = currentRoute == route
+                    val unselectedColor = if (isSystemOnline) SoftCyan.copy(0.5f) else DangerRed.copy(0.3f)
+
                     NavigationBarItem(
                         selected = isSelected,
                         onClick = {
@@ -87,14 +95,21 @@ fun TipsScreen(navController: NavController) {
                                 }
                             }
                         },
-                        icon = { Icon(icon, contentDescription = label) },
-                        label = { Text(label) },
+                        icon = {
+                            Icon(
+                                icon,
+                                contentDescription = label,
+                                tint = if (isSelected) themeColor else unselectedColor
+                            )
+                        },
+                        label = {
+                            Text(
+                                label,
+                                color = if (isSelected) themeColor else unselectedColor
+                            )
+                        },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = NeonCyan,
-                            selectedTextColor = NeonCyan,
-                            unselectedIconColor = SoftCyan.copy(0.5f),
-                            unselectedTextColor = SoftCyan.copy(0.5f),
-                            indicatorColor = NeonCyan.copy(0.1f)
+                            indicatorColor = themeColor.copy(0.1f)
                         )
                     )
                 }
@@ -109,7 +124,7 @@ fun TipsScreen(navController: NavController) {
         ) {
             Text(
                 text = "Optimization Protocols",
-                color = SoftCyan.copy(0.6f),
+                color = if (isSystemOnline) SoftCyan.copy(0.6f) else DangerRed.copy(0.6f), // Shifted
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
             )
@@ -120,7 +135,7 @@ fun TipsScreen(navController: NavController) {
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 items(tips) { tip ->
-                    TipCard(tip)
+                    TipCard(tip, themeColor) // Pass themeColor to card
                 }
             }
         }
@@ -128,7 +143,7 @@ fun TipsScreen(navController: NavController) {
 }
 
 @Composable
-fun TipCard(tip: InventoryTip) {
+fun TipCard(tip: InventoryTip, themeColor: Color) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
@@ -141,13 +156,13 @@ fun TipCard(tip: InventoryTip) {
         ) {
             Surface(
                 modifier = Modifier.size(48.dp),
-                color = NeonCyan.copy(alpha = 0.1f),
+                color = themeColor.copy(alpha = 0.1f), // Shifted
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(
                     imageVector = tip.icon,
                     contentDescription = null,
-                    tint = NeonCyan,
+                    tint = themeColor, // Shifted
                     modifier = Modifier.padding(12.dp)
                 )
             }

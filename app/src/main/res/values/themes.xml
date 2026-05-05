@@ -2,4 +2,13 @@
 <resources>
 
     <style name="Theme.InventoryPro" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- This is the ONLY thing Android 11 will care about -->
+        <item name="windowSplashScreenBackground">#0A0E1A</item>
+
+        <!-- This will be ignored by Android 11, but keep it for 12+ -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/app_logo</item>
+
+        <item name="postSplashScreenTheme">@style/Theme.InventoryPro</item>
+    </style>
 </resources>

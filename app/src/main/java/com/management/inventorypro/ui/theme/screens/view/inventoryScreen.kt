@@ -33,18 +33,27 @@ import coil.size.Size
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.management.inventorypro.models.ProductModel
+import com.management.inventorypro.ui.theme.DangerRed
 import com.management.inventorypro.ui.theme.DeepMidnight
 import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
 import com.management.inventorypro.ui.theme.screens.view.CategoryHeader
-import kotlinx.coroutines.Dispatchers
+import com.management.inventorypro.util.ConnectivityObserver
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ViewInventoryScreen(navController: NavController) {
     val context = LocalContext.current
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+    // --- REACTIVE ENGINE ---
+    val connectivityObserver = remember { ConnectivityObserver(context) }
+    val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
+
+    val themeColor = if (isSystemOnline) NeonCyan else DangerRed
+
+    // --- OFFLINE SHIFT LOGIC ---
 
     val inventoryRef = FirebaseDatabase.getInstance().getReference("users").child(userId).child("inventory")
     val settingsRef = FirebaseDatabase.getInstance().getReference("users").child(userId).child("settings")
@@ -80,51 +89,34 @@ fun ViewInventoryScreen(navController: NavController) {
         })
     }
 
-    // Grouping by the full hierarchy path (e.g., "Electronics > Phones")
-    val groupedItems = productList.groupBy { it.category.ifEmpty { "Uncategorized" } }
-    // Helper class to represent the hierarchy in memory
-    data class CategoryNode(
-        val name: String,
-        val subCategories: Map<String, List<ProductModel>>,
-        val looseItems: List<ProductModel>
-    )
-
-// Process the products into a hierarchical structure
-    val hierarchicalData = remember(productList) {
-        productList.groupBy { it.category.split(" > ").first().ifEmpty { "Uncategorized" } }
-            .mapValues { (parentName, productsInParent) ->
-                // Separate items that belong to a subcategory from those that are loose
-                val subGroups = productsInParent.filter { it.category.contains(" > ") }
-                    .groupBy { it.category.substringAfter(" > ") }
-
-                val loose = productsInParent.filter { !it.category.contains(" > ") }
-
-                CategoryNode(parentName, subGroups, loose)
-            }
-    }
-
     Scaffold(
         containerColor = DeepMidnight,
         topBar = {
             TopAppBar(
-                title = { Text("System Inventory", fontWeight = FontWeight.Bold, letterSpacing = 1.sp) },
+                title = {
+                    Column {
+                        Text("System Inventory", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        if (!isSystemOnline) {
+                            Text("OFFLINE MODE - READ ONLY", fontSize = 10.sp, color = DangerRed, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = DeepMidnight,
-                    titleContentColor = NeonCyan
+                    titleContentColor = themeColor
                 )
             )
         }
     ) { padding ->
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize().background(DeepMidnight), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = NeonCyan)
+                CircularProgressIndicator(color = themeColor)
             }
         } else if (productList.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().background(DeepMidnight), contentAlignment = Alignment.Center) {
                 Text("Database empty.", color = SoftCyan.copy(0.5f))
             }
         } else {
-            // Inside ViewInventoryScreen.kt
             val masterGroups = productList.groupBy { it.category.split(" > ").first().ifEmpty { "Uncategorized" } }
 
             LazyColumn(
@@ -137,7 +129,8 @@ fun ViewInventoryScreen(navController: NavController) {
                             name = parentName,
                             itemCount = allItemsInParent.size,
                             isExpanded = expandedCategory == parentName,
-                            onToggle = { expandedCategory = if (expandedCategory == parentName) null else parentName }
+                            onToggle = { expandedCategory = if (expandedCategory == parentName) null else parentName },
+                            themeColor = themeColor // Pass the shift
                         )
                     }
 
@@ -146,7 +139,6 @@ fun ViewInventoryScreen(navController: NavController) {
                             .groupBy { it.category.substringAfter(" > ") }
                         val looseItems = allItemsInParent.filter { !it.category.contains(" > ") }
 
-                        // A. SUB-CATEGORY CARDS
                         subGroups.forEach { (subName, items) ->
                             item(key = "sub_${parentName}_$subName") {
                                 var subExpanded by remember { mutableStateOf(false) }
@@ -156,13 +148,14 @@ fun ViewInventoryScreen(navController: NavController) {
                                             name = subName,
                                             itemCount = items.size,
                                             isExpanded = subExpanded,
-                                            onToggle = { subExpanded = !subExpanded }
+                                            onToggle = { subExpanded = !subExpanded },
+                                            themeColor = themeColor // Pass the shift
                                         )
                                     }
                                     if (subExpanded) {
                                         items.forEach { product ->
                                             Box(modifier = Modifier.padding(start = 32.dp, bottom = 4.dp)) {
-                                                ProductRowItem(product, maxFields, onClick = {
+                                                ProductRowItem(product, maxFields, themeColor, onClick = {
                                                     navController.navigate("update_product/${product.id}")
                                                 })
                                             }
@@ -172,10 +165,9 @@ fun ViewInventoryScreen(navController: NavController) {
                             }
                         }
 
-                        // B. LOOSE ITEMS IN THIS CATEGORY
                         items(looseItems, key = { "${it.id}_loose" }) { product ->
                             Box(modifier = Modifier.padding(start = 16.dp, bottom = 4.dp)) {
-                                ProductRowItem(product, maxFields, onClick = {
+                                ProductRowItem(product, maxFields, themeColor, onClick = {
                                     navController.navigate("update_product/${product.id}")
                                 })
                             }
@@ -192,14 +184,15 @@ fun CategoryHeader(
     name: String,
     itemCount: Int,
     isExpanded: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    themeColor: Color // Added for shift
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onToggle() },
         colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
-        border = BorderStroke(1.dp, if (isExpanded) NeonCyan.copy(0.4f) else Color.White.copy(0.05f)),
+        border = BorderStroke(1.dp, if (isExpanded) themeColor.copy(0.4f) else Color.White.copy(0.05f)),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
@@ -209,19 +202,19 @@ fun CategoryHeader(
             Icon(
                 imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
                 contentDescription = null,
-                tint = if (isExpanded) NeonCyan else SoftCyan.copy(0.6f)
+                tint = if (isExpanded) themeColor else SoftCyan.copy(0.6f)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = name,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 16.sp,
-                color = if (isExpanded) NeonCyan else Color.White,
+                color = if (isExpanded) themeColor else Color.White,
                 modifier = Modifier.weight(1f),
                 maxLines = 2
             )
             Surface(
-                color = if (isExpanded) NeonCyan else SurfaceNavy,
+                color = if (isExpanded) themeColor else SurfaceNavy,
                 shape = RoundedCornerShape(8.dp),
                 border = if (!isExpanded) BorderStroke(1.dp, SoftCyan.copy(0.3f)) else null
             ) {
@@ -239,7 +232,7 @@ fun CategoryHeader(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductRowItem(product: ProductModel, maxFields: Int, onClick: () -> Unit) {
+fun ProductRowItem(product: ProductModel, maxFields: Int, themeColor: Color, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -255,9 +248,6 @@ fun ProductRowItem(product: ProductModel, maxFields: Int, onClick: () -> Unit) {
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(product.imageUrl)
                     .crossfade(300)
-                    .dispatcher(Dispatchers.IO)
-                    .size(Size(160, 160)) // Critical for low-RAM performance
-                    .diskCachePolicy(CachePolicy.ENABLED)
                     .build(),
                 contentDescription = null,
                 modifier = Modifier
@@ -277,12 +267,7 @@ fun ProductRowItem(product: ProductModel, maxFields: Int, onClick: () -> Unit) {
                     color = Color.White
                 )
 
-                // Dynamic Metadata Display
-                val displayFields = if (maxFields <= 0) {
-                    product.customFields.toList()
-                } else {
-                    product.customFields.toList().take(maxFields)
-                }
+                val displayFields = if (maxFields <= 0) product.customFields.toList() else product.customFields.toList().take(maxFields)
 
                 displayFields.forEach { (key, value) ->
                     Text(
@@ -296,7 +281,7 @@ fun ProductRowItem(product: ProductModel, maxFields: Int, onClick: () -> Unit) {
                     Text(
                         text = "+${product.customFields.size - maxFields} more",
                         fontSize = 11.sp,
-                        color = NeonCyan.copy(0.8f),
+                        color = themeColor.copy(0.8f), // Shifted
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -305,48 +290,8 @@ fun ProductRowItem(product: ProductModel, maxFields: Int, onClick: () -> Unit) {
             Icon(
                 Icons.Default.KeyboardArrowRight,
                 contentDescription = null,
-                tint = SoftCyan.copy(0.2f),
+                tint = themeColor.copy(0.2f), // Shifted
                 modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-@Composable
-fun SubCategoryFolderHeader(name: String, count: Int) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 8.dp, top = 12.dp),
-        color = SurfaceNavy.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.List,
-                contentDescription = null,
-                tint = NeonCyan,
-                modifier = Modifier.size(14.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = name.uppercase(),
-                color = NeonCyan,
-                fontWeight = FontWeight.Black,
-                fontSize = 11.sp,
-                letterSpacing = 1.sp,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "$count",
-                color = DeepMidnight,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .background(SoftCyan.copy(0.6f), CircleShape)
-                    .padding(horizontal = 6.dp, vertical = 1.dp)
             )
         }
     }

@@ -15,7 +15,7 @@ import com.management.inventorypro.ui.theme.screens.add.AddProductScreen
 
 import com.management.inventorypro.ui.theme.screens.dashboard.DashboardScreen
 import com.management.inventorypro.ui.theme.screens.landing.LandingScreen
-
+import com.management.inventorypro.ui.theme.screens.landing.SplashScreen
 
 
 import com.management.inventorypro.ui.theme.screens.login.LoginScreen
@@ -49,17 +49,17 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
 
     NavHost(
         navController = navController,
-        startDestination = startRoute
+        startDestination = "splash"
     ) {
-        // --- NEW STARTING POINT ---
         composable("landing") {
             LandingScreen(onGetStarted = {
-                navController.navigate("login") {
-                    // Optional: Clears the landing screen from the backstack
-                    // so pressing "back" doesn't take them back to the welcome screen.
+                navController.navigate("login") { // Or wherever you want them to go
                     popUpTo("landing") { inclusive = true }
                 }
             })
+        }
+        composable("splash"){
+            SplashScreen(navController)
         }
 
         composable("register") {

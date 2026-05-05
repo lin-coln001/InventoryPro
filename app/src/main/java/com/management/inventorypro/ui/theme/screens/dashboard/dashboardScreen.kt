@@ -28,7 +28,8 @@ import com.google.firebase.database.*
 import com.management.inventorypro.data.AuthViewModel
 import com.management.inventorypro.models.inventoryQuestions
 import com.management.inventorypro.ui.theme.*
-import com.management.inventorypro.util.isOnline
+import com.management.inventorypro.util.ConnectivityObserver
+
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -41,9 +42,10 @@ fun DashboardScreen(navController: NavHostController) {
     // 1. STATE MANAGEMENT
     val sharedPref = remember { context.getSharedPreferences("InventoryPrefs", Context.MODE_PRIVATE) }
     var showSurvey by remember { mutableStateOf(sharedPref.getBoolean("first_run", true)) }
+    val connectivityObserver = remember { ConnectivityObserver(context) }
 
     // Connectivity State
-    var isSystemOnline by remember { mutableStateOf(isOnline(context)) }
+    val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -72,13 +74,7 @@ fun DashboardScreen(navController: NavHostController) {
         }
     }
 
-    // Monitoring Connection
-    LaunchedEffect(Unit) {
-        while(true) {
-            isSystemOnline = isOnline(context)
-            delay(3000)
-        }
-    }
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(

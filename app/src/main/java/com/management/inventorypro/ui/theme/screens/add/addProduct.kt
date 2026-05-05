@@ -32,7 +32,8 @@ import coil.compose.AsyncImage
 import com.google.firebase.database.FirebaseDatabase
 import com.management.inventorypro.data.ProductViewModel
 import com.management.inventorypro.ui.theme.*
-import com.management.inventorypro.util.isOnline
+import com.management.inventorypro.util.ConnectivityObserver
+
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -47,19 +48,17 @@ fun AddProductScreen(
     val listState = rememberLazyListState()
 
     // --- 1. REACTIVE STATES ---
-    var isSystemOnline by remember { mutableStateOf(isOnline(context)) }
+    val connectivityObserver = remember { ConnectivityObserver(context) }
+
+    // --- OFFLINE SHIFT LOGIC ---
+    val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
     var firstErrorIndex by remember { mutableStateOf<Int?>(null) }
     var nameHasError by remember { mutableStateOf(false) }
 
     val themeColor = if (isSystemOnline) NeonCyan else DangerRed
 
     // Connection Polling
-    LaunchedEffect(Unit) {
-        while (true) {
-            isSystemOnline = isOnline(context)
-            delay(2000)
-        }
-    }
+
 
     // --- 2. FORM DATA ---
     var productName by remember { mutableStateOf("") }

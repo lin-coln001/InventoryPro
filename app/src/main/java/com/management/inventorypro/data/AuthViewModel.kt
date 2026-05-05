@@ -74,16 +74,7 @@ class AuthViewModel: ViewModel( ) {
                     Toast.LENGTH_LONG).show()
             }}}
 
-    //    fun logout(navController: NavController) {
-//
-//        mAuth.signOut()
-//
-//        navController.navigate("login") {
-//            // This clears the backstack so the user can't "Back" into the Dashboard
-//            popUpTo(0) { inclusive = true }
-//            launchSingleTop = true
-//        }
-//    }
+
     fun logout(navController: NavController,context: Context) {
         mAuth.signOut()
         Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
@@ -107,6 +98,21 @@ class AuthViewModel: ViewModel( ) {
         }.addOnFailureListener {
             onResult("User")
         }
+    }
+    fun sendPasswordReset(email: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        if (email.isBlank()) {
+            onError("Please enter your email address.")
+            return
+        }
+
+        FirebaseAuth.getInstance().sendPasswordResetEmail(email)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    onSuccess()
+                } else {
+                    onError(task.exception?.message ?: "Failed to send reset email")
+                }
+            }
     }
 
 
