@@ -6,14 +6,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,14 +23,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import coil.request.CachePolicy
 import coil.request.ImageRequest
-import coil.size.Size
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.management.inventorypro.models.ProductModel
@@ -38,7 +41,6 @@ import com.management.inventorypro.ui.theme.DeepMidnight
 import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
-import com.management.inventorypro.ui.theme.screens.view.CategoryHeader
 import com.management.inventorypro.util.ConnectivityObserver
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,13 +49,9 @@ fun ViewInventoryScreen(navController: NavController) {
     val context = LocalContext.current
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-    // --- REACTIVE ENGINE ---
     val connectivityObserver = remember { ConnectivityObserver(context) }
     val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
-
     val themeColor = if (isSystemOnline) NeonCyan else DangerRed
-
-    // --- OFFLINE SHIFT LOGIC ---
 
     val inventoryRef = FirebaseDatabase.getInstance().getReference("users").child(userId).child("inventory")
     val settingsRef = FirebaseDatabase.getInstance().getReference("users").child(userId).child("settings")
@@ -63,8 +61,11 @@ fun ViewInventoryScreen(navController: NavController) {
     var expandedCategory by remember { mutableStateOf<String?>(null) }
     var maxFields by remember { mutableIntStateOf(2) }
 
+    var searchQuery by remember { mutableStateOf("") }
+    var currentSortOption by remember { mutableStateOf("Newest") }
+    val sortOptions = listOf("Newest", "A-Z")
+
     LaunchedEffect(userId) {
-        // Fetch Max Fields Settings
         settingsRef.child("maxVisibleFields").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 maxFields = snapshot.getValue(Int::class.java) ?: 0
@@ -72,7 +73,6 @@ fun ViewInventoryScreen(navController: NavController) {
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        // Fetch Inventory Data
         inventoryRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 productList.clear()
@@ -87,6 +87,37 @@ fun ViewInventoryScreen(navController: NavController) {
                 Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    // --- ADVANCED SEARCH ENGINE (Includes Custom Fields) ---
+// 1. First, we filter the raw products down to ONLY what matches the search
+    val filteredAndSortedList = productList.filter { product ->
+        val nameMatch = product.name.contains(searchQuery, ignoreCase = true)
+        val categoryMatch = product.category.contains(searchQuery, ignoreCase = true)
+        val customFieldsMatch = product.customFields.values.any { it.contains(searchQuery, ignoreCase = true) }
+
+        nameMatch || categoryMatch || customFieldsMatch
+    }.let { list ->
+        if (currentSortOption == "A-Z") list.sortedBy { it.name.lowercase() }
+        else list.asReversed()
+    }
+
+// 2. IMPORTANT: Group the list AFTER it has been filtered.
+// This ensures that if an item is "far apart" from another,
+// only those two items (and their specific headers) show up.
+    val masterGroups = filteredAndSortedList.groupBy {
+        it.category.split(" > ").first().ifEmpty { "Uncategorized" }
+    }
+    // Auto-expand categories when the user types more than 2 characters
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.length >= 2) {
+            // You can set a specific category to expand or, if you want all open,
+            // you would need to change expandedCategory to a list.
+            // For now, let's at least clear the "null" state if results are found.
+            if (masterGroups.isNotEmpty()) {
+                expandedCategory = masterGroups.keys.firstOrNull()
+            }
+        }
     }
 
     Scaffold(
@@ -108,71 +139,153 @@ fun ViewInventoryScreen(navController: NavController) {
             )
         }
     ) { padding ->
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().background(DeepMidnight), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = themeColor)
-            }
-        } else if (productList.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().background(DeepMidnight), contentAlignment = Alignment.Center) {
-                Text("Database empty.", color = SoftCyan.copy(0.5f))
-            }
-        } else {
-            val masterGroups = productList.groupBy { it.category.split(" > ").first().ifEmpty { "Uncategorized" } }
-
-            LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                masterGroups.forEach { (parentName, allItemsInParent) ->
-                    item(key = "parent_$parentName") {
-                        CategoryHeader(
-                            name = parentName,
-                            itemCount = allItemsInParent.size,
-                            isExpanded = expandedCategory == parentName,
-                            onToggle = { expandedCategory = if (expandedCategory == parentName) null else parentName },
-                            themeColor = themeColor // Pass the shift
-                        )
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Search items or categories...", color = SoftCyan.copy(0.4f)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = themeColor) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = SoftCyan)
+                        }
                     }
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = themeColor,
+                    unfocusedBorderColor = SoftCyan.copy(alpha = 0.2f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = SurfaceNavy.copy(alpha = 0.3f),
+                    unfocusedContainerColor = SurfaceNavy.copy(alpha = 0.3f),
+                    cursorColor = themeColor,
+                    focusedLeadingIconColor = themeColor,
+                    unfocusedLeadingIconColor = SoftCyan.copy(alpha = 0.6f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
+            )
 
-                    if (expandedCategory == parentName) {
-                        val subGroups = allItemsInParent.filter { it.category.contains(" > ") }
-                            .groupBy { it.category.substringAfter(" > ") }
-                        val looseItems = allItemsInParent.filter { !it.category.contains(" > ") }
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(sortOptions) { option ->
+                    FilterChip(
+                        selected = currentSortOption == option,
+                        onClick = { currentSortOption = option },
+                        label = { Text(option, fontSize = 12.sp) },
+                        leadingIcon = {
+                            if (currentSortOption == option) {
+                                Icon(Icons.Default.Check, null, modifier = Modifier.size(14.dp))
+                            }
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = themeColor,
+                            selectedLabelColor = DeepMidnight,
+                            containerColor = SurfaceNavy,
+                            labelColor = SoftCyan
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            borderColor = if (currentSortOption == option) themeColor else Color.Transparent,
+                            enabled = true,
+                            selected = currentSortOption == option
+                        )
+                    )
+                }
+            }
 
-                        subGroups.forEach { (subName, items) ->
-                            item(key = "sub_${parentName}_$subName") {
-                                var subExpanded by remember { mutableStateOf(false) }
-                                Column {
-                                    Box(modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp)) {
-                                        CategoryHeader(
-                                            name = subName,
-                                            itemCount = items.size,
-                                            isExpanded = subExpanded,
-                                            onToggle = { subExpanded = !subExpanded },
-                                            themeColor = themeColor // Pass the shift
-                                        )
-                                    }
-                                    if (subExpanded) {
-                                        items.forEach { product ->
-                                            Box(modifier = Modifier.padding(start = 32.dp, bottom = 4.dp)) {
-                                                ProductRowItem(product, maxFields, themeColor, onClick = {
-                                                    navController.navigate("update_product/${product.id}")
-                                                })
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = themeColor)
+                }
+            } else if (filteredAndSortedList.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        if (searchQuery.isEmpty()) "Database empty." else "No matches found.",
+                        color = SoftCyan.copy(0.5f)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    masterGroups.forEach { (parentName, allItemsInParent) ->
+                        item(key = "parent_$parentName") {
+                            CategoryHeader(
+                                name = parentName,
+                                itemCount = allItemsInParent.size,
+                                isExpanded = expandedCategory == parentName,
+                                onToggle = { expandedCategory = if (expandedCategory == parentName) null else parentName },
+                                themeColor = themeColor
+                            )
+                        }
+
+                        if (expandedCategory == parentName) {
+                            val subGroups = allItemsInParent.filter { it.category.contains(" > ") }
+                                .groupBy { it.category.substringAfter(" > ") }
+                            val looseItems = allItemsInParent.filter { !it.category.contains(" > ") }
+
+                            subGroups.forEach { (subName, items) ->
+                                item(key = "sub_${parentName}_$subName") {
+                                    var subExpanded by remember { mutableStateOf(false) }
+                                    Column {
+                                        Box(modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp)) {
+                                            CategoryHeader(
+                                                name = subName,
+                                                itemCount = items.size,
+                                                isExpanded = subExpanded,
+                                                onToggle = { subExpanded = !subExpanded },
+                                                themeColor = themeColor
+                                            )
+                                        }
+                                        if (subExpanded) {
+                                            items.forEach { product ->
+                                                Box(modifier = Modifier.padding(start = 32.dp, bottom = 4.dp)) {
+                                                    ProductRowItem(
+                                                        product = product,
+                                                        maxFields = maxFields,
+                                                        themeColor = themeColor,
+                                                        searchQuery = searchQuery, // FIXED
+                                                        onClick = {
+                                                            navController.navigate("update_product/${product.id}")
+                                                        }
+                                                    )
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        items(looseItems, key = { "${it.id}_loose" }) { product ->
-                            Box(modifier = Modifier.padding(start = 16.dp, bottom = 4.dp)) {
-                                ProductRowItem(product, maxFields, themeColor, onClick = {
-                                    navController.navigate("update_product/${product.id}")
-                                })
+                            items(looseItems, key = { "${it.id}_loose" }) { product ->
+                                Box(modifier = Modifier.padding(start = 16.dp, bottom = 4.dp)) {
+                                    ProductRowItem(
+                                        product = product,
+                                        maxFields = maxFields,
+                                        themeColor = themeColor,
+                                        searchQuery = searchQuery, // FIXED
+                                        onClick = {
+                                            navController.navigate("update_product/${product.id}")
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
         }
@@ -185,7 +298,7 @@ fun CategoryHeader(
     itemCount: Int,
     isExpanded: Boolean,
     onToggle: () -> Unit,
-    themeColor: Color // Added for shift
+    themeColor: Color
 ) {
     Card(
         modifier = Modifier
@@ -232,7 +345,13 @@ fun CategoryHeader(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductRowItem(product: ProductModel, maxFields: Int, themeColor: Color, onClick: () -> Unit) {
+fun ProductRowItem(
+    product: ProductModel,
+    maxFields: Int,
+    themeColor: Color,
+    searchQuery: String,
+    onClick: () -> Unit
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -261,7 +380,11 @@ fun ProductRowItem(product: ProductModel, maxFields: Int, themeColor: Color, onC
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = product.name,
+                    text = getHighlightedText(
+                        text = product.name,
+                        query = searchQuery,
+                        highlightColor = NeonCyan
+                    ),
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     color = Color.White
@@ -269,19 +392,22 @@ fun ProductRowItem(product: ProductModel, maxFields: Int, themeColor: Color, onC
 
                 val displayFields = if (maxFields <= 0) product.customFields.toList() else product.customFields.toList().take(maxFields)
 
+                // Inside ProductRowItem, where it displays custom fields:
                 displayFields.forEach { (key, value) ->
                     Text(
-                        text = "$key: $value",
+                        text = buildAnnotatedString {
+                            append("$key: ")
+                            append(getHighlightedText(value, searchQuery, NeonCyan))
+                        },
                         fontSize = 12.sp,
                         color = SoftCyan.copy(0.6f)
                     )
                 }
-
                 if (maxFields > 0 && product.customFields.size > maxFields) {
                     Text(
                         text = "+${product.customFields.size - maxFields} more",
                         fontSize = 11.sp,
-                        color = themeColor.copy(0.8f), // Shifted
+                        color = themeColor.copy(0.8f),
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -290,9 +416,35 @@ fun ProductRowItem(product: ProductModel, maxFields: Int, themeColor: Color, onC
             Icon(
                 Icons.Default.KeyboardArrowRight,
                 contentDescription = null,
-                tint = themeColor.copy(0.2f), // Shifted
+                tint = themeColor.copy(0.2f),
                 modifier = Modifier.size(18.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun getHighlightedText(text: String, query: String, highlightColor: Color): AnnotatedString {
+    return buildAnnotatedString {
+        val lowercaseText = text.lowercase()
+        val lowercaseQuery = query.lowercase()
+
+        if (query.isEmpty() || !lowercaseText.contains(lowercaseQuery)) {
+            append(text)
+        } else {
+            var start = 0
+            while (start < text.length) {
+                val index = lowercaseText.indexOf(lowercaseQuery, start)
+                if (index == -1) {
+                    append(text.substring(start))
+                    break
+                }
+                append(text.substring(start, index))
+                withStyle(style = SpanStyle(color = highlightColor, fontWeight = FontWeight.Bold)) {
+                    append(text.substring(index, index + query.length))
+                }
+                start = index + query.length
+            }
         }
     }
 }

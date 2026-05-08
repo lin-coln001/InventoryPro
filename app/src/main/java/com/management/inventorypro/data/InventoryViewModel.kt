@@ -98,4 +98,34 @@ class InventoryViewModel : ViewModel() {
             .child(productId)
             .removeValue()
     }
+    // -- Add these to your InventoryViewModel class --
+
+    // 1. Search and Sort States
+    var searchQuery by mutableStateOf("")
+    var currentSortOption by mutableStateOf(SortOption.NAME_ASC)
+
+    // 2. Define Sort Options
+    enum class SortOption {
+        NAME_ASC, NAME_DESC, NEWEST, OLDEST
+    }
+
+    /**
+     * This is what your UI will actually loop through.
+     * It takes the 'products' list and applies search + sort logic.
+     */
+    val filteredProducts: List<ProductModel>
+        get() {
+            val filtered = if (searchQuery.isEmpty()) {
+                products
+            } else {
+                products.filter { it.name?.contains(searchQuery, ignoreCase = true) == true }
+            }
+
+            return when (currentSortOption) {
+                SortOption.NAME_ASC -> filtered.sortedBy { it.name?.lowercase() }
+                SortOption.NAME_DESC -> filtered.sortedByDescending { it.name?.lowercase() }
+                SortOption.NEWEST -> filtered.reversed() // Assuming Firebase gives them in order
+                SortOption.OLDEST -> filtered
+            }
+        }
 }
