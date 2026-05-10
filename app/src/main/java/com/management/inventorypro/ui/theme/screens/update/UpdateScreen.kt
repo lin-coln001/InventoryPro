@@ -55,17 +55,15 @@ fun UpdateProductScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    // --- 1. CONNECTION & VALIDATION STATES ---
+
     val connectivityObserver = remember { ConnectivityObserver(context) }
 
-    // --- OFFLINE SHIFT LOGIC ---
+
     val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
     var firstErrorIndex by remember { mutableStateOf<Int?>(null) }
     var nameHasError by remember { mutableStateOf(false) }
     val themeColor = if (isSystemOnline) NeonCyan else DangerRed
 
-
-    // --- 2. DATABASE & FORM STATE ---
     val allProducts by viewModel.products.collectAsState()
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val database = FirebaseDatabase.getInstance().getReference("users")
@@ -166,11 +164,11 @@ fun UpdateProductScreen(
                     Button(
                         onClick = {
                             if (!isSystemOnline) {
-                                Toast.makeText(context, "UPLINK ERROR: Reconnect to Cloud", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "YOU ARE OFFLINE: go online to continue", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
 
-                            // A. Validate Name
+
                             if (productName.trim().isBlank()) {
                                 nameHasError = true
                                 scope.launch { listState.animateScrollToItem(1) }
@@ -178,16 +176,16 @@ fun UpdateProductScreen(
                                 return@Button
                             }
 
-                            // B. Validate Metadata Scan
+
                             val brokenIdx = viewModel.customFields.indexOfFirst { it.key.isBlank() || it.value.isBlank() }
                             if (brokenIdx != -1) {
                                 firstErrorIndex = brokenIdx
                                 scope.launch { listState.animateScrollToItem(brokenIdx + 5) }
-                                Toast.makeText(context, "Empty metadata row detected", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Empty  row detected", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
 
-                            // C. Save Execution
+
                             val finalPath = if (subCategory.isNotBlank()) "$mainCategory > $subCategory" else mainCategory
                             val currentUri = viewModel.selectedImageUri
 
@@ -221,7 +219,7 @@ fun UpdateProductScreen(
                         enabled = !viewModel.isUploading
                     ) {
                         if (viewModel.isUploading) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = DeepMidnight)
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = NeonCyan)
                         } else {
                             Icon(Icons.Default.Done, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
@@ -237,7 +235,7 @@ fun UpdateProductScreen(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // IMAGE SECTION
+
             item {
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
@@ -276,10 +274,10 @@ fun UpdateProductScreen(
                 )
             }
 
-            // CLASSIFICATION SECTION
+
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(text = "Classification", color = themeColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(text = "Categorisation", color = themeColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
                     CategorySelector(
                         label = "Main Category",
@@ -299,7 +297,7 @@ fun UpdateProductScreen(
                 }
             }
 
-            // METADATA SECTION
+
             item {
                 Column {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

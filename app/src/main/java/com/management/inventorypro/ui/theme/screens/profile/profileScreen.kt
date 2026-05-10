@@ -1,7 +1,6 @@
 package com.management.inventorypro.ui.theme.screens.profile
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -39,7 +38,6 @@ import com.management.inventorypro.ui.theme.SurfaceNavy
 import com.management.inventorypro.ui.theme.screens.profile.ProfileCyberField
 import com.management.inventorypro.util.ConnectivityObserver
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -52,7 +50,6 @@ fun ProfileScreen(
     val database = FirebaseDatabase.getInstance().getReference("User").child(currentUser?.uid ?: "")
     val connectivityObserver = remember { ConnectivityObserver(context) }
 
-    // --- OFFLINE SHIFT LOGIC ---
     val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
     val themeColor = if (isSystemOnline) NeonCyan else DangerRed
     val unselectedColor = if (isSystemOnline) SoftCyan.copy(0.5f) else DangerRed.copy(0.3f)
@@ -66,10 +63,8 @@ fun ProfileScreen(
     var isEditing by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var imageUrl by remember { mutableStateOf("") }
-
-
-    // Track if we ever successfully got data
     var hasLoadedData by remember { mutableStateOf(false) }
+
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -90,7 +85,7 @@ fun ProfileScreen(
                 isLoading = false
             }
         } else if (!isSystemOnline && !hasLoadedData) {
-            isLoading = false // Stop spinner so we can show the "No Connection" error
+            isLoading = false
         }
     }
 
@@ -104,7 +99,6 @@ fun ProfileScreen(
                     titleContentColor = themeColor
                 ),
                 actions = {
-                    // Only show edit button if we have data and are online
                     if (isSystemOnline && hasLoadedData) {
                         IconButton(onClick = { isEditing = !isEditing }) {
                             Icon(if (isEditing) Icons.Default.Save else Icons.Default.Edit, null, tint = themeColor)
@@ -146,39 +140,39 @@ fun ProfileScreen(
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = themeColor)
             }
-            // SCENARIO 1: Coming from another screen while offline (No data yet)
             else if (!isSystemOnline && !hasLoadedData) {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.size(64.dp), tint = DangerRed)
+                    Icon(Icons.Default.CloudOff, null, modifier = Modifier.size(64.dp), tint = DangerRed)
                     Spacer(Modifier.height(16.dp))
                     Text("UPLINK FAILED", color = DangerRed, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
                     Text(
-                        "Profile data could not be retrieved. Please check your connection and try again.",
+                        "Profile data could not be retrieved. Check your connection.",
                         color = Color.White.copy(0.7f),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
             }
-            // SCENARIO 2: Data exists (Already here or loaded), just shift to red
             else {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // --- AVATAR (Border shifts to red if offline) ---
+                    // Avatar
                     Box(
                         modifier = Modifier
                             .size(120.dp)
                             .border(BorderStroke(2.dp, if (isEditing && isSystemOnline) themeColor else Color.White.copy(0.1f)), CircleShape)
                             .clip(CircleShape)
-                            .background(SurfaceNavy),
+                            .background(SurfaceNavy)
+                            .clickable(enabled = isEditing && isSystemOnline) { launcher.launch("image/*") },
                         contentAlignment = Alignment.Center
                     ) {
                         if (imageUrl.isNotEmpty()) {
@@ -198,10 +192,32 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     ProfileCyberField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone Number", enabled = isEditing && isSystemOnline, icon = Icons.Default.Call, themeColor = themeColor)
 
-                    // Optional: Show "Sync Paused" footer if offline
+                    // Pushes the logout button to the bottom
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // --- LOGOUT BUTTON ---
+                    OutlinedButton(
+                        onClick = {
+                            auth.signOut() // Instant Logout
+                            navController.navigate("login") { // Ensure "login" matches your NavHost route name
+                                popUpTo(0) { inclusive = true }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp)
+                            .height(56.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed),
+                        border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.ExitToApp, null)
+                        Spacer(Modifier.width(12.dp))
+                        Text("TERMINATE SESSION", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    }
+
                     if (!isSystemOnline) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text("SYSTEM OFFLINE: DATA SYNC PAUSED", color = DangerRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("SYSTEM OFFLINE: DATA SYNC PAUSED", color = DangerRed, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                     }
                 }
             }

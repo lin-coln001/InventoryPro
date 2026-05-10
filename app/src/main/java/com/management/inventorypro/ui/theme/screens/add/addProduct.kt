@@ -47,20 +47,16 @@ fun AddProductScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    // --- 1. REACTIVE STATES ---
     val connectivityObserver = remember { ConnectivityObserver(context) }
 
-    // --- OFFLINE SHIFT LOGIC ---
+
     val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
     var firstErrorIndex by remember { mutableStateOf<Int?>(null) }
     var nameHasError by remember { mutableStateOf(false) }
 
     val themeColor = if (isSystemOnline) NeonCyan else DangerRed
 
-    // Connection Polling
 
-
-    // --- 2. FORM DATA ---
     var productName by remember { mutableStateOf("") }
     var mainCategory by remember { mutableStateOf("Uncategorized") }
     var subCategory by remember { mutableStateOf("") }
@@ -114,7 +110,7 @@ fun AddProductScreen(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // --- IMAGE SELECTION ---
+
                 item {
                     Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
@@ -143,7 +139,7 @@ fun AddProductScreen(
                     }
                 }
 
-                // --- PRODUCT NAME INPUT ---
+
                 item {
                     CyberTextField(
                         value = productName,
@@ -151,7 +147,7 @@ fun AddProductScreen(
                             productName = it
                             if(it.isNotBlank()) nameHasError = false
                         },
-                        label = "Product Name",
+                        label = "Item Name",
                         icon = Icons.Default.List,
                         themeColor = if (nameHasError) DangerRed else themeColor
                     )
@@ -160,17 +156,17 @@ fun AddProductScreen(
                 // --- CLASSIFICATION ---
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "Classification", color = themeColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(text = "Categorisation", color = themeColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         CategorySelector("Main Category", mainCategory, { mainCategory = it; subCategory = "" }, dynamicMainCategories, themeColor)
                         CategorySelector("Sub-Category (Optional)", subCategory, { subCategory = it }, dynamicSubCategories, themeColor)
                     }
                 }
 
-                // --- CUSTOM METADATA ---
+
                 item {
                     Column {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "Custom Metadata", color = themeColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(text = "Custom data", color = themeColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             TextButton(onClick = { viewModel.addNewField() }) {
                                 Icon(Icons.Default.Add, null, tint = themeColor)
                                 Spacer(Modifier.width(4.dp))
@@ -221,16 +217,15 @@ fun AddProductScreen(
                     }
                 }
 
-                // --- ACTION BUTTON ---
+
                 item {
                     Button(
                         onClick = {
                             if (!isSystemOnline) {
-                                Toast.makeText(context, "UPLINK ERROR: Reconnect to Cloud", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "YOU ARE OFFLINE: go online to continue", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
 
-                            // Validation Scan
                             if (productName.trim().isBlank()) {
                                 nameHasError = true
                                 scope.launch { listState.animateScrollToItem(1) }
@@ -246,7 +241,6 @@ fun AddProductScreen(
                                 return@Button
                             }
 
-                            // Save execution
                             val finalPath = if (subCategory.isNotBlank()) "$mainCategory > $subCategory" else mainCategory
                             val currentUri = viewModel.selectedImageUri
                             val newProductId = FirebaseDatabase.getInstance().getReference("users").push().key ?: System.currentTimeMillis().toString()
@@ -272,7 +266,7 @@ fun AddProductScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         if (viewModel.isUploading) {
-                            CircularProgressIndicator(modifier = Modifier.size(32.dp), color = DeepMidnight, strokeWidth = 3.dp)
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp), color = NeonCyan, strokeWidth = 3.dp)
                         } else {
                             Icon(if(isSystemOnline) Icons.Default.CloudUpload else Icons.Default.CloudOff, null)
                             Spacer(Modifier.width(8.dp))
