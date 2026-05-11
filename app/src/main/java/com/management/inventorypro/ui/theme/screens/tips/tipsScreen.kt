@@ -42,29 +42,55 @@ fun TipsScreen(navController: NavController) {
     val context = LocalContext.current
     val connectivityObserver = remember { ConnectivityObserver(context) }
 
-    // --- OFFLINE SHIFT LOGIC ---
     val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
     val themeColor = if (isSystemOnline) NeonCyan else DangerRed
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+
     val tips = listOf(
-        InventoryTip("Folder Navigation", "Use the arrows next to category names to expand sections. A 'Down' arrow means the folder is open!", Icons.Default.Folder),
-        InventoryTip("Smart Categories", "Consistency is key! Use the dropdown when adding items to keep your view organized.", Icons.Default.Category),
-        InventoryTip("Custom Details", "Don't just stop at a name! Use 'Add Field' to track Serial Numbers or Expiry Dates.", Icons.Default.Extension),
-        InventoryTip("Quick Updates", "Tap any product card to enter the Edit screen. You can change the photo or move categories.", Icons.Default.Edit),
-        InventoryTip("System Sync", "All changes are updated in real-time across the cloud database for instant access.", Icons.Default.CloudSync)
+        InventoryTip(
+            "Universal Deep Search",
+            "The search bar scans everything. Type a name, a category, or even data hidden inside your custom fields to find items instantly.",
+            Icons.Default.Search
+        ),
+        InventoryTip(
+            "Custom Field Logic",
+            "Your system has no fixed variables. Use 'Custom Fields' to track Prices, Serial Numbers, or Locations based on your specific needs.",
+            Icons.Default.Tune
+        ),
+        InventoryTip(
+            "Visual Status Uplink",
+            "Cyan means you are online and syncing. If the system turns Red, you are in Offline Mode—data is currently Read-Only.",
+            Icons.Default.WifiTethering
+        ),
+        InventoryTip(
+            "Neon Highlighting",
+            "When searching, the system will highlight matches in Neon Cyan so you can visually verify why an item was retrieved.",
+            Icons.Default.AutoFixHigh
+        ),
+        InventoryTip(
+            "Dynamic Hierarchy",
+            "Items are grouped by 'Parent > Sub-category'. Use the arrows to drill down into specific sections of your database.",
+            Icons.Default.AccountTree
+        )
     )
 
     Scaffold(
         containerColor = DeepMidnight,
         topBar = {
             TopAppBar(
-                title = { Text("System Intelligence", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        "System Intelligence",
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = DeepMidnight,
-                    titleContentColor = themeColor // Shifted
+                    titleContentColor = themeColor
                 )
             )
         },
@@ -95,22 +121,9 @@ fun TipsScreen(navController: NavController) {
                                 }
                             }
                         },
-                        icon = {
-                            Icon(
-                                icon,
-                                contentDescription = label,
-                                tint = if (isSelected) themeColor else unselectedColor
-                            )
-                        },
-                        label = {
-                            Text(
-                                label,
-                                color = if (isSelected) themeColor else unselectedColor
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = themeColor.copy(0.1f)
-                        )
+                        icon = { Icon(icon, null, tint = if (isSelected) themeColor else unselectedColor) },
+                        label = { Text(label, color = if (isSelected) themeColor else unselectedColor) },
+                        colors = NavigationBarItemDefaults.colors(indicatorColor = themeColor.copy(0.1f))
                     )
                 }
             }
@@ -123,10 +136,12 @@ fun TipsScreen(navController: NavController) {
                 .background(DeepMidnight)
         ) {
             Text(
-                text = "Optimization Protocols",
-                color = if (isSystemOnline) SoftCyan.copy(0.6f) else DangerRed.copy(0.6f), // Shifted
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                text = "Operational Protocols",
+                color = if (isSystemOnline) themeColor.copy(0.6f) else DangerRed.copy(0.6f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+                modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 12.dp)
             )
 
             LazyColumn(
@@ -135,13 +150,12 @@ fun TipsScreen(navController: NavController) {
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 items(tips) { tip ->
-                    TipCard(tip, themeColor) // Pass themeColor to card
+                    TipCard(tip, themeColor)
                 }
             }
         }
     }
 }
-
 @Composable
 fun TipCard(tip: InventoryTip, themeColor: Color) {
     Card(

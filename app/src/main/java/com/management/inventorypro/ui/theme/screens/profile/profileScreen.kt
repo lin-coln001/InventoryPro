@@ -192,10 +192,10 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     ProfileCyberField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone Number", enabled = isEditing && isSystemOnline, icon = Icons.Default.Call, themeColor = themeColor)
 
-                    // Pushes the logout button to the bottom
+
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // --- LOGOUT BUTTON ---
+
                     OutlinedButton(
                         onClick = {
                             auth.signOut() // Instant Logout
@@ -213,7 +213,7 @@ fun ProfileScreen(
                     ) {
                         Icon(Icons.Default.ExitToApp, null)
                         Spacer(Modifier.width(12.dp))
-                        Text("TERMINATE SESSION", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text("LOGOUT", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     }
 
                     if (!isSystemOnline) {
@@ -231,7 +231,7 @@ fun ProfileCyberField(
     label: String,
     enabled: Boolean,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    themeColor: Color // <--- Added this parameter
+    themeColor: Color
 ) {
     OutlinedTextField(
         value = value,

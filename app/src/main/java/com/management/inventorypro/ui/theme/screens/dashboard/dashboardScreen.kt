@@ -142,7 +142,7 @@ fun DashboardScreen(navController: NavHostController) {
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                // This is the "pill" shape behind the selected icon
+
                                 indicatorColor = themeColor.copy(alpha = 0.15f)
                             )
                         )
@@ -157,7 +157,7 @@ fun DashboardScreen(navController: NavHostController) {
                     .background(DeepMidnight)
                     .padding(16.dp)
             ) {
-                // Welcome Header
+
                 Text(
                     text = if (isSystemOnline) "Welcome back $username" else "SYSTEM OFFLINE",
                     color = if (isSystemOnline) OffWhite else DangerRed,
@@ -183,7 +183,7 @@ fun DashboardScreen(navController: NavHostController) {
 
                 ActionCard(
                     title = "Add New Item",
-                    subtitle = if (isSystemOnline) "Register product to database" else "This screen cannot be accessed while offline",
+                    subtitle = if (isSystemOnline) "add an item to the database" else "This screen cannot be accessed while offline",
                     icon = Icons.Filled.Inventory,
                     iconColor = themeColor,
                     onClick = { if (isSystemOnline) navController.navigate("add_product") }
@@ -191,7 +191,7 @@ fun DashboardScreen(navController: NavHostController) {
 
                 ActionCard(
                     title = "View Inventory",
-                    subtitle = if (isSystemOnline) "View current inventory" else "Local cache unavailable",
+                    subtitle = if (isSystemOnline) "View current inventory" else "This screen cannot be accessed offline",
                     icon = Icons.Filled.List,
                     iconColor = themeColor,
                     onClick = { if (isSystemOnline) navController.navigate("view_inventory") }
@@ -206,7 +206,7 @@ fun DashboardScreen(navController: NavHostController) {
                     sharedPref.edit().putBoolean("first_run", false).apply()
                     showSurvey = false
                     scope.launch {
-                        snackbarHostState.showSnackbar("SYSTEM OPTIMIZED: Engine Ready")
+                        snackbarHostState.showSnackbar("Survey complete")
                     }
                 },
                 onSkip = {

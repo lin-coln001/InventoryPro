@@ -7,9 +7,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +22,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -35,203 +41,151 @@ import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
 import com.management.inventorypro.ui.theme.screens.login.LoginCyberField
 
-// Consistency Palette
-//val DeepMidnight = Color(0xFF0A0E1A)
-//val SurfaceNavy = Color(0xFF161C2C)
-//val NeonCyan = Color(0xFF00E5FF)
-//val SoftCyan = Color(0xFFB2EBF2)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(navController: NavController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val authViewModel: AuthViewModel = viewModel()
-    val context = LocalContext.current
+    var isLoading by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var resetEmail by remember { mutableStateOf("") }
 
-    val imageLoader = ImageLoader.Builder(context)
-        .components {
-            if (SDK_INT >= 28) add(ImageDecoderDecoder.Factory())
-            else add(GifDecoder.Factory())
-        }.build()
-
+    val authViewModel: AuthViewModel = viewModel()
+    val context = LocalContext.current
     val sharedPref = remember { context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE) }
     var rememberMe by remember { mutableStateOf(sharedPref.getBoolean("remember", false)) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DeepMidnight),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // --- LOGO / GIF SECTION ---
-//        AsyncImage(
-//            model = R.drawable.hello,
-//            imageLoader = imageLoader,
-//            contentDescription = "Login Animation",
-//            modifier = Modifier
-//                .size(160.dp)
-//                .clip(RoundedCornerShape(20.dp)),
-//            contentScale = ContentScale.Fit
-//        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "SYSTEM ACCESS",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = NeonCyan,
-            letterSpacing = 4.sp
-        )
-        Text(
-            text = "Enter Credentials to Proceed",
-            fontSize = 12.sp,
-            color = SoftCyan.copy(alpha = 0.5f),
-            letterSpacing = 1.sp
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- INPUT FIELDS ---
-        LoginCyberField(
-            value = email,
-            onValueChange = { email = it },
-            label = "Email Address",
-            icon = Icons.Default.Email
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LoginCyberField(
-            value = password,
-            onValueChange = { password = it },
-            label = "Password",
-            icon = Icons.Default.Lock,
-            isPassword = true
-        )
-
-        // --- REMEMBER ME ---
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .width(280.dp)
-                .padding(vertical = 12.dp)
+    Box(modifier = Modifier.fillMaxSize().background(DeepMidnight)) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Checkbox(
-                checked = rememberMe,
-                onCheckedChange = { rememberMe = it },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = NeonCyan,
-                    uncheckedColor = SoftCyan.copy(alpha = 0.4f),
-                    checkmarkColor = DeepMidnight
-                )
-            )
             Text(
-                text = "Keep Session Active",
-                fontSize = 14.sp,
-                color = SoftCyan.copy(alpha = 0.7f),
-                modifier = Modifier.clickable { rememberMe = !rememberMe }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // --- LOGIN BUTTON ---
-        Button(
-            onClick = {
-                sharedPref.edit().putBoolean("remember", rememberMe).apply()
-                authViewModel.login(email, password, navController, context)
-            },
-            modifier = Modifier
-                .width(280.dp)
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = NeonCyan,
-                contentColor = DeepMidnight
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("AUTHENTICATE", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- FOOTER ---
-        Row {
-            Text(text = "New User? ", color = Color.White.copy(0.7f))
-            Text(
-                text = "Register ",
+                text = "SYSTEM ACCESS",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
                 color = NeonCyan,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { navController.navigate("register") }
+                letterSpacing = 4.sp
+            )
+            Text(
+                text = "Enter Credentials to Proceed",
+                fontSize = 12.sp,
+                color = SoftCyan.copy(alpha = 0.5f),
+                letterSpacing = 1.sp
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            LoginCyberField(
+                value = email,
+                onValueChange = { email = it },
+                label = "Email Address",
+                icon = Icons.Default.Email
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LoginCyberField(
+                value = password,
+                onValueChange = { password = it },
+                label = "Password",
+                icon = Icons.Default.Lock,
+                isPassword = true
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.width(280.dp).padding(vertical = 12.dp)
+            ) {
+                Checkbox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = NeonCyan,
+                        uncheckedColor = SoftCyan.copy(alpha = 0.4f),
+                        checkmarkColor = DeepMidnight
+                    )
+                )
+                Text(
+                    text = "Keep Session Active",
+                    fontSize = 14.sp,
+                    color = SoftCyan.copy(alpha = 0.7f),
+                    modifier = Modifier.clickable { rememberMe = !rememberMe }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    isLoading = true
+                    sharedPref.edit().putBoolean("remember", rememberMe).apply()
+                    authViewModel.login(email, password, navController, context)
+                    // Note: If login fails, ensure your ViewModel or a side effect sets isLoading = false
+                },
+                enabled = !isLoading,
+                modifier = Modifier.width(280.dp).height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan, contentColor = DeepMidnight),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("AUTHENTICATE", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Row {
+                Text(text = "New User? ", color = Color.White.copy(0.7f))
+                Text(
+                    text = "Register ",
+                    color = NeonCyan,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { navController.navigate("register") }
+                )
+            }
+
+            Text(
+                text = "Forgot Password?",
+                color = NeonCyan.copy(alpha = 0.7f),
+                fontSize = 14.sp,
+                modifier = Modifier.clickable { showResetDialog = true }.padding(16.dp)
             )
         }
-        Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = "Forgot Password?",
-            color = NeonCyan.copy(alpha = 0.7f),
-            fontSize = 14.sp,
-            modifier = Modifier
-                .clickable { showResetDialog = true }
-                .padding(8.dp)
-        )
-
-        if (showResetDialog) {
-            AlertDialog(
-                containerColor = SurfaceNavy,
-                onDismissRequest = { showResetDialog = false },
-                title = { Text("RECOVER ACCESS", color = NeonCyan, fontWeight = FontWeight.Bold) },
-                text = {
-                    Column {
-                        Text("A reset link will be sent to your email address.", color = Color.White)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedTextField(
-                            value = resetEmail,
-                            onValueChange = { resetEmail = it },
-                            label = { Text("Email", color = SoftCyan.copy(0.5f)) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = NeonCyan,
-                                unfocusedBorderColor = Color.White.copy(0.2f),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            )
-                        )
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            authViewModel.sendPasswordReset(
-                                email = resetEmail,
-                                onSuccess = {
-                                    showResetDialog = false
-                                    Toast.makeText(context, "Reset email sent!", Toast.LENGTH_LONG).show()
-                                },
-                                onError = { error ->
-                                    Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        }
-                    ) {
-                        Text("SEND", color = NeonCyan)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showResetDialog = false }) {
-                        Text("CANCEL", color = Color.White.copy(0.5f))
-                    }
-                }
-            )
+        // --- NEON LOADING OVERLAY ---
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.5f)).clickable(enabled = false) {},
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = NeonCyan, strokeWidth = 4.dp)
+            }
         }
     }
-}
 
+    // Reset Dialog Logic
+    if (showResetDialog) {
+        AlertDialog(
+            containerColor = SurfaceNavy,
+            onDismissRequest = { showResetDialog = false },
+            title = { Text("RECOVER ACCESS", color = NeonCyan, fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = resetEmail,
+                    onValueChange = { resetEmail = it },
+                    label = { Text("Email", color = SoftCyan.copy(0.5f)) },
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonCyan, focusedTextColor = Color.White)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    authViewModel.sendPasswordReset(resetEmail, { showResetDialog = false }, {})
+                }) { Text("SEND", color = NeonCyan) }
+            }
+        )
+    }
+}
 @Composable
 fun LoginCyberField(
     value: String,
@@ -240,12 +194,33 @@ fun LoginCyberField(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isPassword: Boolean = false
 ) {
+    // Local state to toggle visibility
+    var passwordVisible by remember { mutableStateOf(false) }
+
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label, color = SoftCyan.copy(0.4f)) },
         modifier = Modifier.width(280.dp),
         leadingIcon = { Icon(icon, contentDescription = null, tint = NeonCyan.copy(0.7f)) },
+
+        // --- ADDED TRAILING ICON FOR VISIBILITY TOGGLE ---
+        trailingIcon = {
+            if (isPassword) {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        tint = NeonCyan.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        },
+
+        // --- ADDED TRANSFORMATION LOGIC ---
+        visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+        keyboardOptions = if (isPassword) KeyboardOptions(keyboardType = KeyboardType.Password) else KeyboardOptions.Default,
+
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = NeonCyan,
