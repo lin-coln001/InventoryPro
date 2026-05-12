@@ -8,117 +8,112 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.management.inventorypro.models.UserModel
 
+class AuthViewModel : ViewModel() {
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
-class AuthViewModel: ViewModel( ) {
-    private val auth: FirebaseAuth =FirebaseAuth.getInstance()
-    private val mAuth: FirebaseAuth = FirebaseAuth.getInstance()
     fun signup(
-        username:String,
-        phone:String,
-        email:String, password:String, confirmpassword:String, navController: NavController, context: Context
-    ){
-        if (username.isBlank() || phone.isBlank() || email.isBlank() || password.isBlank() || confirmpassword.isBlank()){
-            Toast.makeText(context,"Please fill all the fields", Toast.LENGTH_LONG).show()
+        username: String,
+        phone: String,
+        email: String,
+        password: String,
+        confirmpassword: String,
+        navController: NavController,
+        context: Context,
+        onComplete: (Boolean) -> Unit // Added to match login pattern
+    ) {
+        if (username.isBlank() || phone.isBlank() || email.isBlank() || password.isBlank() || confirmpassword.isBlank()) {
+            Toast.makeText(context, "Please fill all the fields", Toast.LENGTH_LONG).show()
+            onComplete(false)
             return
         }
-        if (password != confirmpassword){
-            Toast.makeText(context,"Password do not match",Toast.LENGTH_LONG).show()
+        if (password != confirmpassword) {
+            Toast.makeText(context, "Passwords do not match", Toast.LENGTH_LONG).show()
+            onComplete(false)
             return
         }
-        mAuth.createUserWithEmailAndPassword(email,password).addOnCompleteListener{
-                task ->
-            if (task.isSuccessful){
-                val userId = auth.currentUser?.uid ?: ""
-                val user =
-                    UserModel(username = username, email = email, userId = userId, phone = phone)
 
-                saveUserToDatabase(user,navController,context)
-            }else{
-                Toast.makeText(context,task.exception?.message ?:
-                "Registration failed",Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-    private fun saveUserToDatabase(user: UserModel, navController: NavController, context: Context){
-        val dbRef = FirebaseDatabase.getInstance().getReference("User/${user.userId}")
-        dbRef.setValue(user).addOnCompleteListener{
-                task ->
-            if (task.isSuccessful){
-                Toast.makeText(context,"User Registered successfully",
-                    Toast.LENGTH_LONG).show()
-                navController.navigate("login"){
-                    popUpTo(0)
-                }
-            }else{
-                Toast.makeText(context,task.exception?.message ?: "Failed to save user",
-                    Toast.LENGTH_LONG).show()
-            }
-        }
-
-
-    }
-//    fun login(
-//        email: String,
-//        password: String,
-//        navController: NavController,
-//        context: Context){
-//        if (email.isBlank() || password.isBlank()){
-//            Toast.makeText(context,"Username and Password required",Toast.LENGTH_LONG).show()
-//            return
-//        }
-//        auth.signInWithEmailAndPassword(email,password).addOnCompleteListener{
-//                task ->
-//            if (task.isSuccessful){
-//                Toast.makeText(context,"Login Successful",Toast.LENGTH_LONG).show()
-//                navController.navigate("dashboard"){
-//                    popUpTo(0)
-//                }
-//            }else{
-//                Toast.makeText(context,task.exception?.message ?: "Login failed",
-//                    Toast.LENGTH_LONG).show()
-//            }}}
-// In AuthViewModel.kt
-fun login(
-    email: String,
-    pass: String,
-    nav: NavController,
-    context: Context,
-    onComplete: (Boolean) -> Unit // <--- Add this parameter
-) {
-    auth.signInWithEmailAndPassword(email, pass)
-        .addOnCompleteListener { task ->
+        auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
             if (task.isSuccessful) {
-                // Success: Navigate and stop loader
-                nav.navigate("dashboard") {
-                    popUpTo("login") { inclusive = true }
+                val userId = auth.currentUser?.uid ?: ""
+                val user = UserModel(username = username, email = email, userId = userId, phone = phone)
+
+                // Save credentials for Biometric use later
+                val prefs = context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+                prefs.edit().apply {
+                    putString("saved_email", email)
+                    putString("saved_password", password) // Use the 'password' variable
+                    apply()
                 }
-                onComplete(true)
+
+                saveUserToDatabase(user, navController, context, onComplete)
             } else {
-                // Failure: Show error message and stop loader
-                Toast.makeText(context, "Auth Error: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, task.exception?.message ?: "Registration failed", Toast.LENGTH_LONG).show()
                 onComplete(false)
             }
         }
-}
+    }
 
+    private fun saveUserToDatabase(user: UserModel, navController: NavController, context: Context, onComplete: (Boolean) -> Unit) {
+        val dbRef = FirebaseDatabase.getInstance().getReference("User/${user.userId}")
+        dbRef.setValue(user).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Toast.makeText(context, "User Registered successfully", Toast.LENGTH_LONG).show()
+                onComplete(true)
+                navController.navigate("login") {
+                    popUpTo(0)
+                }
+            } else {
+                Toast.makeText(context, task.exception?.message ?: "Failed to save user", Toast.LENGTH_LONG).show()
+                onComplete(false)
+            }
+        }
+    }
 
-    fun logout(navController: NavController,context: Context) {
-        mAuth.signOut()
+    fun login(
+        email: String,
+        pass: String,
+        nav: NavController,
+        context: Context,
+        onComplete: (Boolean) -> Unit
+    ) {
+        auth.signInWithEmailAndPassword(email, pass)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Save credentials for Biometric Login capability
+                    val prefs = context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+                    prefs.edit().apply {
+                        putString("saved_email", email)
+                        putString("saved_password", pass)
+                        apply()
+                    }
+
+                    nav.navigate("dashboard") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                    onComplete(true)
+                } else {
+                    Toast.makeText(context, "Auth Error: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    onComplete(false)
+                }
+            }
+    }
+
+    fun logout(navController: NavController, context: Context) {
+        auth.signOut()
         Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
         navController.navigate("login") {
             popUpTo("dashboard") { inclusive = true }
         }
     }
-    fun getUsername(onResult: (String) -> Unit) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
 
+    fun getUsername(onResult: (String) -> Unit) {
+        val userId = auth.currentUser?.uid
         if (userId == null) {
             onResult("User")
             return
         }
 
         val dbRef = FirebaseDatabase.getInstance().getReference("User/$userId")
-
         dbRef.get().addOnSuccessListener { snapshot ->
             val username = snapshot.child("username").value?.toString() ?: "User"
             onResult(username)
@@ -126,13 +121,14 @@ fun login(
             onResult("User")
         }
     }
+
     fun sendPasswordReset(email: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         if (email.isBlank()) {
             onError("Please enter your email address.")
             return
         }
 
-        FirebaseAuth.getInstance().sendPasswordResetEmail(email)
+        auth.sendPasswordResetEmail(email)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     onSuccess()
@@ -141,8 +137,4 @@ fun login(
                 }
             }
     }
-
-
-
-
 }

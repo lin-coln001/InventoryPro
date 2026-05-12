@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.ImageLoader
@@ -40,7 +42,7 @@ import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
 import com.management.inventorypro.ui.theme.screens.login.LoginCyberField
-
+import com.management.inventorypro.util.BiometricHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +57,10 @@ fun LoginScreen(navController: NavController) {
     val context = LocalContext.current
     val sharedPref = remember { context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE) }
     var rememberMe by remember { mutableStateOf(sharedPref.getBoolean("remember", false)) }
+
+    // Initialize Biometric Helper
+    val activity = context as? FragmentActivity
+    val biometricHelper = remember { activity?.let { BiometricHelper(it) } }
 
     Box(modifier = Modifier.fillMaxSize().background(DeepMidnight)) {
         Column(
@@ -122,12 +128,9 @@ fun LoginScreen(navController: NavController) {
                 onClick = {
                     if (email.isBlank() || password.isBlank()) {
                         Toast.makeText(context, "All fields are required", Toast.LENGTH_SHORT).show()
-                        // Stop here; do not set isLoading to true
                     } else {
                         isLoading = true
                         sharedPref.edit().putBoolean("remember", rememberMe).apply()
-
-                        // Pass a callback to your ViewModel to reset the loader on failure
                         authViewModel.login(email, password, navController, context) { success ->
                             if (!success) isLoading = false
                         }
@@ -139,6 +142,46 @@ fun LoginScreen(navController: NavController) {
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("AUTHENTICATE", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            }
+
+            // --- FIXED BIOMETRIC SECTION PLACEMENT ---
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        biometricHelper?.authenticate {
+                            val savedEmail = sharedPref.getString("saved_email", null)
+                            val savedPass = sharedPref.getString("saved_password", null)
+
+                            if (!savedEmail.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
+                                isLoading = true
+                                authViewModel.login(savedEmail, savedPass, navController, context) { success ->
+                                    if (!success) isLoading = false
+                                }
+                            } else {
+                                Toast.makeText(context, "Manual login required once", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                    .padding(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Fingerprint,
+                    contentDescription = "Biometric Login",
+                    tint = NeonCyan,
+                    modifier = Modifier.size(52.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "BIOMETRIC LOGIN",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NeonCyan.copy(alpha = 0.7f),
+                    letterSpacing = 1.sp
+                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -161,10 +204,13 @@ fun LoginScreen(navController: NavController) {
             )
         }
 
-        // --- NEON LOADING OVERLAY ---
+        // --- LOADING OVERLAY (Stays at Box level to cover everything) ---
         if (isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.5f)).clickable(enabled = false) {},
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(0.5f))
+                    .clickable(enabled = false) {},
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = NeonCyan, strokeWidth = 4.dp)
@@ -183,13 +229,27 @@ fun LoginScreen(navController: NavController) {
                     value = resetEmail,
                     onValueChange = { resetEmail = it },
                     label = { Text("Email", color = SoftCyan.copy(0.5f)) },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonCyan, focusedTextColor = Color.White)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonCyan,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    )
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
-                    authViewModel.sendPasswordReset(resetEmail, { showResetDialog = false }, {})
+                    authViewModel.sendPasswordReset(resetEmail, {
+                        showResetDialog = false
+                        Toast.makeText(context, "Reset link sent!", Toast.LENGTH_SHORT).show()
+                    }, { error ->
+                        Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                    })
                 }) { Text("SEND", color = NeonCyan) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
+                    Text("CANCEL", color = Color.White.copy(0.5f))
+                }
             }
         )
     }

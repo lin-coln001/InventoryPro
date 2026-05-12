@@ -4,18 +4,19 @@ import android.animation.ObjectAnimator
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import android.os.Bundle
 import android.view.View
-import androidx.activity.ComponentActivity
+
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.animation.doOnEnd
+import androidx.fragment.app.FragmentActivity
 import com.cloudinary.android.MediaManager
 import com.management.inventorypro.navigation.AppNavHost
 import com.management.inventorypro.ui.theme.InventoryProTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // 1. Install the Splash Screen BEFORE super.onCreate
         val splashScreen = installSplashScreen()

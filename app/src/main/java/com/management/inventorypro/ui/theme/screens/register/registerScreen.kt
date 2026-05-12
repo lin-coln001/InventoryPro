@@ -35,7 +35,6 @@ import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(navController: NavController) {
@@ -51,7 +50,9 @@ fun RegisterScreen(navController: NavController) {
 
     Box(modifier = Modifier.fillMaxSize().background(DeepMidnight)) {
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -84,19 +85,33 @@ fun RegisterScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = {if (username.isBlank() || phone.isBlank() || email.isBlank() ||
-                    password.isBlank() || confirmpassword.isBlank()) {
-                    Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
-                } else if (password != confirmpassword) {
-                    Toast.makeText(context, "Passwords do not match", Toast.LENGTH_SHORT).show()
-                } else {
-                    isLoading = true
-                    authViewModel.signup(username, phone, email, password, confirmpassword, navController, context)
-                }
+                onClick = {
+                    if (username.isBlank() || phone.isBlank() || email.isBlank() ||
+                        password.isBlank() || confirmpassword.isBlank()
+                    ) {
+                        Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+                    } else if (password != confirmpassword) {
+                        Toast.makeText(context, "Passwords do not match", Toast.LENGTH_SHORT).show()
+                    } else {
+                        isLoading = true
+                        // FIXED: Added the trailing lambda to handle the loading state
+                        authViewModel.signup(
+                            username, phone, email, password, confirmpassword, navController, context
+                        ) { success ->
+                            if (!success) {
+                                isLoading = false
+                            }
+                        }
+                    }
                 },
                 enabled = !isLoading,
-                modifier = Modifier.width(280.dp).height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan, contentColor = DeepMidnight),
+                modifier = Modifier
+                    .width(280.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NeonCyan,
+                    contentColor = DeepMidnight
+                ),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("CREATE ACCOUNT", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
@@ -116,16 +131,22 @@ fun RegisterScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(48.dp))
         }
 
+        // --- LOADING OVERLAY ---
         if (isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.5f)).clickable(enabled = false) {},
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(0.5f))
+                    .clickable(enabled = false) {},
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = NeonCyan, strokeWidth = 4.dp)
             }
         }
     }
-}@Composable
+
+}
+@Composable
 fun LoginCyberField(
     value: String,
     onValueChange: (String) -> Unit,
