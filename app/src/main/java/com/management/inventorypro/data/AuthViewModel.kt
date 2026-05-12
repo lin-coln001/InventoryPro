@@ -57,22 +57,49 @@ class AuthViewModel: ViewModel( ) {
 
 
     }
-    fun login(email: String,password: String,navController: NavController,context: Context){
-        if (email.isBlank() || password.isBlank()){
-            Toast.makeText(context,"Username and Password required",Toast.LENGTH_LONG).show()
-            return
-        }
-        auth.signInWithEmailAndPassword(email,password).addOnCompleteListener{
-                task ->
-            if (task.isSuccessful){
-                Toast.makeText(context,"Login Successful",Toast.LENGTH_LONG).show()
-                navController.navigate("dashboard"){
-                    popUpTo(0)
+//    fun login(
+//        email: String,
+//        password: String,
+//        navController: NavController,
+//        context: Context){
+//        if (email.isBlank() || password.isBlank()){
+//            Toast.makeText(context,"Username and Password required",Toast.LENGTH_LONG).show()
+//            return
+//        }
+//        auth.signInWithEmailAndPassword(email,password).addOnCompleteListener{
+//                task ->
+//            if (task.isSuccessful){
+//                Toast.makeText(context,"Login Successful",Toast.LENGTH_LONG).show()
+//                navController.navigate("dashboard"){
+//                    popUpTo(0)
+//                }
+//            }else{
+//                Toast.makeText(context,task.exception?.message ?: "Login failed",
+//                    Toast.LENGTH_LONG).show()
+//            }}}
+// In AuthViewModel.kt
+fun login(
+    email: String,
+    pass: String,
+    nav: NavController,
+    context: Context,
+    onComplete: (Boolean) -> Unit // <--- Add this parameter
+) {
+    auth.signInWithEmailAndPassword(email, pass)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                // Success: Navigate and stop loader
+                nav.navigate("dashboard") {
+                    popUpTo("login") { inclusive = true }
                 }
-            }else{
-                Toast.makeText(context,task.exception?.message ?: "Login failed",
-                    Toast.LENGTH_LONG).show()
-            }}}
+                onComplete(true)
+            } else {
+                // Failure: Show error message and stop loader
+                Toast.makeText(context, "Auth Error: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+        }
+}
 
 
     fun logout(navController: NavController,context: Context) {

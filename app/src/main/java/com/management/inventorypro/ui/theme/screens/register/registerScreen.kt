@@ -1,6 +1,7 @@
 package com.management.inventorypro.ui.theme.screens.register
 
 import android.os.Build.VERSION.SDK_INT
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -83,9 +84,15 @@ fun RegisterScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = {
+                onClick = {if (username.isBlank() || phone.isBlank() || email.isBlank() ||
+                    password.isBlank() || confirmpassword.isBlank()) {
+                    Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+                } else if (password != confirmpassword) {
+                    Toast.makeText(context, "Passwords do not match", Toast.LENGTH_SHORT).show()
+                } else {
                     isLoading = true
                     authViewModel.signup(username, phone, email, password, confirmpassword, navController, context)
+                }
                 },
                 enabled = !isLoading,
                 modifier = Modifier.width(280.dp).height(56.dp),

@@ -120,10 +120,18 @@ fun LoginScreen(navController: NavController) {
 
             Button(
                 onClick = {
-                    isLoading = true
-                    sharedPref.edit().putBoolean("remember", rememberMe).apply()
-                    authViewModel.login(email, password, navController, context)
-                    // Note: If login fails, ensure your ViewModel or a side effect sets isLoading = false
+                    if (email.isBlank() || password.isBlank()) {
+                        Toast.makeText(context, "All fields are required", Toast.LENGTH_SHORT).show()
+                        // Stop here; do not set isLoading to true
+                    } else {
+                        isLoading = true
+                        sharedPref.edit().putBoolean("remember", rememberMe).apply()
+
+                        // Pass a callback to your ViewModel to reset the loader on failure
+                        authViewModel.login(email, password, navController, context) { success ->
+                            if (!success) isLoading = false
+                        }
+                    }
                 },
                 enabled = !isLoading,
                 modifier = Modifier.width(280.dp).height(56.dp),
