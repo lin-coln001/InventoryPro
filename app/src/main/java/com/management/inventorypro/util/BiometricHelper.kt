@@ -3,15 +3,25 @@ package com.management.inventorypro.util // Use your actual package path
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-
 class BiometricHelper(private val activity: FragmentActivity) {
-    fun authenticate(onSuccess: () -> Unit) {
+    // Added (Boolean) -> Unit so we can pass 'true' or 'false' back
+    fun authenticate(onResult: (Boolean) -> Unit) {
         val executor = ContextCompat.getMainExecutor(activity)
         val biometricPrompt = BiometricPrompt(activity, executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)
-                    onSuccess()
+                    onResult(true) // Pass true on success
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    onResult(false) // Pass false on cancel/error
+                }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                    // Optional: onResult(false) here if you want to close on single failed scan
                 }
             })
 

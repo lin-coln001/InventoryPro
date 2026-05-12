@@ -229,15 +229,22 @@ fun SettingsScreen(navController: NavController) {
                     Switch(
                         checked = isBioEnabled,
                         onCheckedChange = { newState ->
-                            biometricHelper?.authenticate {
-                                isBioEnabled = newState
-                                loginPrefs.edit().putBoolean("bio_enabled", newState).apply()
-                                Toast.makeText(context, "Security Updated", Toast.LENGTH_SHORT).show()
+                            // Note: 'newState' is captured here from the onCheckedChange
+                            biometricHelper?.authenticate { success ->
+                                if (success) {
+                                    isBioEnabled = newState
+                                    loginPrefs.edit().putBoolean("bio_enabled", newState).apply()
+                                    Toast.makeText(context, "Security Updated", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    // If they cancel, the switch stays where it was
+                                    Toast.makeText(context, "Authentication failed", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         },
                         enabled = isSystemOnline,
                         colors = SwitchDefaults.colors(checkedThumbColor = themeColor)
                     )
+
                 }
             }
 

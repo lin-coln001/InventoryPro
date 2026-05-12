@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -36,8 +38,7 @@ import com.management.inventorypro.util.ConnectivityObserver
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun AddProductScreen(
     navController: NavController,
@@ -47,15 +48,15 @@ fun AddProductScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
+    // PRECISION ERROR HANDLING
+    val nameRequester = remember { BringIntoViewRequester() }
     val connectivityObserver = remember { ConnectivityObserver(context) }
-
 
     val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
     var firstErrorIndex by remember { mutableStateOf<Int?>(null) }
     var nameHasError by remember { mutableStateOf(false) }
 
     val themeColor = if (isSystemOnline) NeonCyan else DangerRed
-
 
     var productName by remember { mutableStateOf("") }
     var mainCategory by remember { mutableStateOf("Uncategorized") }
@@ -111,6 +112,7 @@ fun AddProductScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
 
+                // Index 0: Image Upload
                 item {
                     Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
@@ -139,21 +141,23 @@ fun AddProductScreen(
                     }
                 }
 
-
+                // Index 1: Product Name with Precision Relocation
                 item {
-                    CyberTextField(
-                        value = productName,
-                        onValueChange = {
-                            productName = it
-                            if(it.isNotBlank()) nameHasError = false
-                        },
-                        label = "Item Name",
-                        icon = Icons.Default.List,
-                        themeColor = if (nameHasError) DangerRed else themeColor
-                    )
+                    Box(modifier = Modifier.bringIntoViewRequester(nameRequester)) {
+                        CyberTextField(
+                            value = productName,
+                            onValueChange = {
+                                productName = it
+                                if(it.isNotBlank()) nameHasError = false
+                            },
+                            label = "Item Name",
+                            icon = Icons.Default.List,
+                            themeColor = if (nameHasError) DangerRed else themeColor
+                        )
+                    }
                 }
 
-                // --- CLASSIFICATION ---
+                // Index 2: Classification
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(text = "Categorisation", color = themeColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -162,7 +166,7 @@ fun AddProductScreen(
                     }
                 }
 
-
+                // Index 3: Custom Data Header
                 item {
                     Column {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -184,6 +188,7 @@ fun AddProductScreen(
                     }
                 }
 
+                // Index 4 onwards: Dynamic Custom Fields
                 itemsIndexed(viewModel.customFields) { index, field ->
                     val isBroken = index == firstErrorIndex
                     Row(
@@ -217,7 +222,7 @@ fun AddProductScreen(
                     }
                 }
 
-
+                // Final Index: Submit Button
                 item {
                     Button(
                         onClick = {
@@ -226,17 +231,25 @@ fun AddProductScreen(
                                 return@Button
                             }
 
+                            // FIX: Precise Scroll to Name Error
                             if (productName.trim().isBlank()) {
                                 nameHasError = true
-                                scope.launch { listState.animateScrollToItem(1) }
+                                scope.launch {
+                                    nameRequester.bringIntoView()
+                                    listState.animateScrollToItem(1)
+                                }
                                 Toast.makeText(context, "Name required", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
 
+                            // FIX: Precise Scroll to Custom Field Row
                             val brokenIdx = viewModel.customFields.indexOfFirst { it.key.isBlank() || it.value.isBlank() }
                             if (brokenIdx != -1) {
                                 firstErrorIndex = brokenIdx
-                                scope.launch { listState.animateScrollToItem(brokenIdx + 5) }
+                                scope.launch {
+                                    // Calculate: Index 4 is the first custom field row
+                                    listState.animateScrollToItem(4 + brokenIdx)
+                                }
                                 Toast.makeText(context, "Incomplete row detected", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
@@ -278,7 +291,6 @@ fun AddProductScreen(
         }
     }
 }
-
 @Composable
 fun CyberTextField(
     value: String,

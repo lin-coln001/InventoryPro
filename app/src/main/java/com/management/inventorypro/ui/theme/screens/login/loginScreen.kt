@@ -1,7 +1,6 @@
 package com.management.inventorypro.ui.theme.screens.login
 
 import android.content.Context
-import android.os.Build.VERSION.SDK_INT
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -31,17 +29,11 @@ import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import coil.ImageLoader
-import coil.compose.AsyncImage
-import coil.decode.GifDecoder
-import coil.decode.ImageDecoderDecoder
-import com.management.inventorypro.R
 import com.management.inventorypro.data.AuthViewModel
 import com.management.inventorypro.ui.theme.DeepMidnight
 import com.management.inventorypro.ui.theme.NeonCyan
 import com.management.inventorypro.ui.theme.SoftCyan
 import com.management.inventorypro.ui.theme.SurfaceNavy
-import com.management.inventorypro.ui.theme.screens.login.LoginCyberField
 import com.management.inventorypro.util.BiometricHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,10 +47,13 @@ fun LoginScreen(navController: NavController) {
 
     val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
-    val sharedPref = remember { context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE) }
-    var rememberMe by remember { mutableStateOf(sharedPref.getBoolean("remember", false)) }
 
-    // Initialize Biometric Helper
+    // --- MASTER PREFS & BIOMETRIC CHECK ---
+    // This looks at the same "LoginPrefs" file shared with the Settings Screen
+    val loginPrefs = remember { context.getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE) }
+    val isBioEnabledInSettings = loginPrefs.getBoolean("bio_enabled", false)
+    var rememberMe by remember { mutableStateOf(loginPrefs.getBoolean("remember", false)) }
+
     val activity = context as? FragmentActivity
     val biometricHelper = remember { activity?.let { BiometricHelper(it) } }
 
@@ -130,7 +125,7 @@ fun LoginScreen(navController: NavController) {
                         Toast.makeText(context, "All fields are required", Toast.LENGTH_SHORT).show()
                     } else {
                         isLoading = true
-                        sharedPref.edit().putBoolean("remember", rememberMe).apply()
+                        loginPrefs.edit().putBoolean("remember", rememberMe).apply()
                         authViewModel.login(email, password, navController, context) { success ->
                             if (!success) isLoading = false
                         }
@@ -144,25 +139,37 @@ fun LoginScreen(navController: NavController) {
                 Text("AUTHENTICATE", fontWeight = FontWeight.Black, letterSpacing = 2.sp)
             }
 
-            // --- FIXED BIOMETRIC SECTION PLACEMENT ---
             Spacer(modifier = Modifier.height(24.dp))
 
+            // --- MASTER CONTROLLED BIOMETRIC SECTION ---
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
-                        biometricHelper?.authenticate {
-                            val savedEmail = sharedPref.getString("saved_email", null)
-                            val savedPass = sharedPref.getString("saved_password", null)
+                        // Check if the Master Switch from Settings is ON
+                        if (!isBioEnabledInSettings) {
+                            Toast.makeText(
+                                context,
+                                "Biometrics disabled in settings. Manual login required.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            // Only run helper if switch is ON in settings
+                            biometricHelper?.authenticate { success ->
+                                if (success) {
+                                    val savedEmail = loginPrefs.getString("saved_email", null)
+                                    val savedPass = loginPrefs.getString("saved_password", null)
 
-                            if (!savedEmail.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
-                                isLoading = true
-                                authViewModel.login(savedEmail, savedPass, navController, context) { success ->
-                                    if (!success) isLoading = false
+                                    if (!savedEmail.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
+                                        isLoading = true
+                                        authViewModel.login(savedEmail, savedPass, navController, context) { loginSuccess ->
+                                            if (!loginSuccess) isLoading = false
+                                        }
+                                    } else {
+                                        Toast.makeText(context, "Manual login required once to save credentials", Toast.LENGTH_LONG).show()
+                                    }
                                 }
-                            } else {
-                                Toast.makeText(context, "Manual login required once", Toast.LENGTH_LONG).show()
                             }
                         }
                     }
@@ -171,7 +178,8 @@ fun LoginScreen(navController: NavController) {
                 Icon(
                     imageVector = Icons.Default.Fingerprint,
                     contentDescription = "Biometric Login",
-                    tint = NeonCyan,
+                    // Visual feedback: Gray when the master switch is off
+                    tint = if (isBioEnabledInSettings) NeonCyan else Color.Gray,
                     modifier = Modifier.size(52.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -179,7 +187,7 @@ fun LoginScreen(navController: NavController) {
                     text = "BIOMETRIC LOGIN",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NeonCyan.copy(alpha = 0.7f),
+                    color = if (isBioEnabledInSettings) NeonCyan.copy(alpha = 0.7f) else Color.Gray,
                     letterSpacing = 1.sp
                 )
             }
@@ -204,7 +212,6 @@ fun LoginScreen(navController: NavController) {
             )
         }
 
-        // --- LOADING OVERLAY (Stays at Box level to cover everything) ---
         if (isLoading) {
             Box(
                 modifier = Modifier
@@ -218,7 +225,6 @@ fun LoginScreen(navController: NavController) {
         }
     }
 
-    // Reset Dialog Logic
     if (showResetDialog) {
         AlertDialog(
             containerColor = SurfaceNavy,
@@ -254,6 +260,7 @@ fun LoginScreen(navController: NavController) {
         )
     }
 }
+
 @Composable
 fun LoginCyberField(
     value: String,
@@ -262,7 +269,6 @@ fun LoginCyberField(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isPassword: Boolean = false
 ) {
-    // Local state to toggle visibility
     var passwordVisible by remember { mutableStateOf(false) }
 
     OutlinedTextField(
@@ -271,24 +277,19 @@ fun LoginCyberField(
         label = { Text(label, color = SoftCyan.copy(0.4f)) },
         modifier = Modifier.width(280.dp),
         leadingIcon = { Icon(icon, contentDescription = null, tint = NeonCyan.copy(0.7f)) },
-
-        // --- ADDED TRAILING ICON FOR VISIBILITY TOGGLE ---
         trailingIcon = {
             if (isPassword) {
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
                         imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        contentDescription = if (passwordVisible) "Hide Password" else "Show Password",
                         tint = NeonCyan.copy(alpha = 0.5f)
                     )
                 }
             }
         },
-
-        // --- ADDED TRANSFORMATION LOGIC ---
         visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = if (isPassword) KeyboardOptions(keyboardType = KeyboardType.Password) else KeyboardOptions.Default,
-
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = NeonCyan,

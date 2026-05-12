@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +13,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -44,7 +47,7 @@ import com.management.inventorypro.util.ConnectivityObserver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun UpdateProductScreen(
     navController: NavController,
@@ -55,9 +58,9 @@ fun UpdateProductScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-
+    // PRECISION ERROR HANDLING
+    val nameRequester = remember { BringIntoViewRequester() }
     val connectivityObserver = remember { ConnectivityObserver(context) }
-
 
     val isSystemOnline by connectivityObserver.isOnline.collectAsState(initial = true)
     var firstErrorIndex by remember { mutableStateOf<Int?>(null) }
@@ -168,23 +171,29 @@ fun UpdateProductScreen(
                                 return@Button
                             }
 
-
+                            // FIX: Precise Scroll to Name Error
                             if (productName.trim().isBlank()) {
                                 nameHasError = true
-                                scope.launch { listState.animateScrollToItem(1) }
+                                scope.launch {
+                                    nameRequester.bringIntoView()
+                                    listState.animateScrollToItem(1)
+                                }
                                 Toast.makeText(context, "Item name required", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
 
-
+                            // FIX: Precise Scroll to Dynamic Metadata Error
                             val brokenIdx = viewModel.customFields.indexOfFirst { it.key.isBlank() || it.value.isBlank() }
                             if (brokenIdx != -1) {
                                 firstErrorIndex = brokenIdx
-                                scope.launch { listState.animateScrollToItem(brokenIdx + 5) }
-                                Toast.makeText(context, "Empty  row detected", Toast.LENGTH_SHORT).show()
+                                scope.launch {
+                                    // Calculation: Item 0 (Img), Item 1 (Name), Item 2 (Cat), Item 3 (Header).
+                                    // Row starts at index 4.
+                                    listState.animateScrollToItem(4 + brokenIdx)
+                                }
+                                Toast.makeText(context, "Empty row detected", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
-
 
                             val finalPath = if (subCategory.isNotBlank()) "$mainCategory > $subCategory" else mainCategory
                             val currentUri = viewModel.selectedImageUri
@@ -236,6 +245,7 @@ fun UpdateProductScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
 
+            // Index 0: Image
             item {
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
@@ -262,19 +272,22 @@ fun UpdateProductScreen(
                 }
             }
 
+            // Index 1: Name Field with Precision Request
             item {
-                UpdateCyberTextField(
-                    value = productName,
-                    onValueChange = {
-                        productName = it
-                        if(it.isNotBlank()) nameHasError = false
-                    },
-                    label = "Item Name",
-                    themeColor = if (nameHasError) DangerRed else themeColor
-                )
+                Box(modifier = Modifier.bringIntoViewRequester(nameRequester)) {
+                    UpdateCyberTextField(
+                        value = productName,
+                        onValueChange = {
+                            productName = it
+                            if(it.isNotBlank()) nameHasError = false
+                        },
+                        label = "Item Name",
+                        themeColor = if (nameHasError) DangerRed else themeColor
+                    )
+                }
             }
 
-
+            // Index 2: Categorization
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(text = "Categorisation", color = themeColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -297,7 +310,7 @@ fun UpdateProductScreen(
                 }
             }
 
-
+            // Index 3: Advanced Metadata Header
             item {
                 Column {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -313,6 +326,7 @@ fun UpdateProductScreen(
                 }
             }
 
+            // Index 4 onwards: Dynamic rows
             itemsIndexed(viewModel.customFields) { index, field ->
                 val isBroken = index == firstErrorIndex
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
