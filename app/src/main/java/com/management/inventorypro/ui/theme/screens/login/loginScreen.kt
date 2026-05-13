@@ -166,9 +166,9 @@ fun LoginScreen(navController: NavController) {
                                         authViewModel.login(savedEmail, savedPass, navController, context) { loginSuccess ->
                                             if (!loginSuccess) isLoading = false
                                         }
-                                    } else {
-                                        Toast.makeText(context, "Manual login required once to save credentials", Toast.LENGTH_LONG).show()
                                     }
+                                } else {
+//                                    Toast.makeText(context, "Manual login required once to save credentials", Toast.LENGTH_LONG).show()
                                 }
                             }
                         }
@@ -178,7 +178,7 @@ fun LoginScreen(navController: NavController) {
                 Icon(
                     imageVector = Icons.Default.Fingerprint,
                     contentDescription = "Biometric Login",
-                    // Visual feedback: Gray when the master switch is off
+
                     tint = if (isBioEnabledInSettings) NeonCyan else Color.Gray,
                     modifier = Modifier.size(52.dp)
                 )

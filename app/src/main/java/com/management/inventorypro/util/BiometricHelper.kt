@@ -14,15 +14,24 @@ class BiometricHelper(private val activity: FragmentActivity) {
                     onResult(true) // Pass true on success
                 }
 
+
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
-                    onResult(false) // Pass false on cancel/error
+
+                    if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+
+                        onResult(false)
+                    } else {
+
+                        onResult(false)
+                    }
                 }
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
                     // Optional: onResult(false) here if you want to close on single failed scan
                 }
+
             })
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
